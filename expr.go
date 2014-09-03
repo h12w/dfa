@@ -9,7 +9,7 @@ func Str(s string) *Machine {
 		ss = append(ss, stateTo(b, i+1))
 	}
 	ss = append(ss, finalState())
-	return &Machine{ss}
+	return &Machine{ss, 0}
 }
 
 func Between(lo, hi rune) *Machine {
@@ -28,7 +28,7 @@ func BetweenByte(s, e byte) *Machine {
 	return &Machine{states{
 		stateBetween(s, e, 1),
 		finalState(),
-	}}
+	}, 0}
 }
 
 func Char(s string) (m *Machine) {
@@ -93,11 +93,19 @@ func (m *Machine) ZeroOrMore() *Machine {
 		m.shiftID(-1)
 	}
 	m.startState().label = defaultFinal
-	return m.minimize()
+	return m
 }
 
 func ZeroOrMore(ms ...*Machine) *Machine {
 	return Con(ms...).ZeroOrMore()
+}
+
+func (m *Machine) Loop(filter func(b byte) bool) *Machine {
+	m = m.clone()
+	m.eachFinal(func(f *state) {
+		f.filterConnect(m.startState(), filter)
+	})
+	return m
 }
 
 func (m *Machine) OneOrMore() *Machine {
@@ -105,7 +113,7 @@ func (m *Machine) OneOrMore() *Machine {
 	m.eachFinal(func(f *state) {
 		f.connect(m.startState())
 	})
-	return m.minimize()
+	return m
 }
 
 func OneOrMore(ms ...*Machine) *Machine {
@@ -115,7 +123,7 @@ func OneOrMore(ms ...*Machine) *Machine {
 func (m *Machine) ZeroOrOne() *Machine {
 	m = m.clone()
 	m.states[0].label = defaultFinal
-	return m.minimize()
+	return m
 }
 
 func ZeroOrOne(ms ...*Machine) *Machine {
@@ -131,9 +139,21 @@ func (m *Machine) Complement() *Machine {
 			f.label = defaultFinal
 		}
 	})
-	return m.minimize()
+	return m
 }
 
 func (m *Machine) Exclude(ms ...*Machine) *Machine {
-	return and(m, Or(ms...).Complement())
+	ex := Or(ms...)
+	ex.eachFinal(func(s *state) {
+		s.label = 9999 // TODO remove this hack
+	})
+	return newMerger(m, ex, difference{}).merge().deleteUnreachable()
+}
+
+func (m *Machine) Repeat(n int) *Machine {
+	mm := m.clone()
+	for i := 0; i < n-1; i++ {
+		mm = con2(mm, m)
+	}
+	return mm
 }

@@ -23,15 +23,15 @@ func TestDotFormat(t *testing.T) {
 			0 -> 1 [label="'0'"];
 			0 -> 2 [label="'1'-'9'"];
 			0 -> 3 [label="'A'-'Z'\n'a'-'z'"];
-			1 [shape=doublecircle, width=".18"];
+			1 [shape=doublecircle, width=".18", xlabel="L1"];
 			1 -> 2 [label="'0'-'9'"];
 			1 -> 4 [label="'X'\n'x'"];
-			2 [shape=doublecircle, width=".18"];
+			2 [shape=doublecircle, width=".18", xlabel="L1"];
 			2 -> 2 [label="'0'-'9'"];
-			3 [shape=doublecircle, width=".18"];
+			3 [shape=doublecircle, width=".18", xlabel="L2"];
 			3 -> 3 [label="'0'-'9'\n'A'-'Z'\n'a'-'z'"];
 			4 -> 5 [label="'0'-'9'\n'A'-'F'\n'a'-'f'"];
-			5 [shape=doublecircle, width=".18"];
+			5 [shape=doublecircle, width=".18", xlabel="L0"];
 			5 -> 5 [label="'0'-'9'\n'A'-'F'\n'a'-'f'"];
 		}
 	`))

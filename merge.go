@@ -1,6 +1,9 @@
 package dfa
 
-import "container/list"
+import (
+	"container/list"
+	"fmt"
+)
 
 type merger struct {
 	m1, m2, m *Machine
@@ -9,7 +12,7 @@ type merger struct {
 	mergeMethod
 }
 type mergeMethod interface {
-	mergeLabel(s1, s2 *state) finalLabel
+	mergeLabel(s1, s2 *state) stateLabel
 	eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int))
 }
 
@@ -25,16 +28,16 @@ func newMerger(m1, m2 *Machine, method mergeMethod) *merger {
 
 func (q *merger) merge() *Machine {
 	if q.m1 == nil {
-		return q.m2
+		return q.m2.clone()
 	} else if q.m2 == nil {
-		return q.m1
+		return q.m1.clone()
 	}
-	q.getID(0, 0)
+	q.getID(q.m1.start, q.m2.start)
 	for q.l.Len() > 0 {
 		id, id1, id2 := q.get()
 		q.m.states[id] = q.mergeState(q.m1.state(id1), q.m2.state(id2))
 	}
-	return q.m.minimize()
+	return q.m
 }
 
 func (q *merger) mergeState(s1, s2 *state) state {
@@ -50,13 +53,13 @@ func (q *merger) getKey(id1, id2 int) [2]int {
 	const trivialFinalID = -2
 	if id1 >= 0 && q.m1.states[id1].trivialFinal() {
 		id1 = trivialFinalID
-		if id2 == invalidID {
+		if id2 < 0 {
 			id2 = trivialFinalID
 		}
 	}
 	if id2 >= 0 && q.m2.states[id2].trivialFinal() {
 		id2 = trivialFinalID
-		if id1 == invalidID {
+		if id1 < 0 {
 			id1 = trivialFinalID
 		}
 	}
@@ -89,7 +92,7 @@ func (q *merger) get() (id, id1, id2 int) {
 
 type intersection struct{}
 
-func (intersection) mergeLabel(s1, s2 *state) finalLabel {
+func (intersection) mergeLabel(s1, s2 *state) stateLabel {
 	l1, l2 := s1.label, s2.label
 	if l1 == l2 {
 		return l1
@@ -101,7 +104,7 @@ func (intersection) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
 	b1, id1 := it1()
 	b2, id2 := it2()
-	for id1 != invalidID && id2 != invalidID {
+	for id1 >= 0 && id2 >= 0 {
 		if b1 == b2 {
 			visit(b1, id1, id2)
 			b1, id1 = it1()
@@ -116,7 +119,7 @@ func (intersection) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 
 type union struct{}
 
-func (union) mergeLabel(s1, s2 *state) finalLabel {
+func (union) mergeLabel(s1, s2 *state) stateLabel {
 	if s1 == nil {
 		return s2.label
 	}
@@ -125,11 +128,11 @@ func (union) mergeLabel(s1, s2 *state) finalLabel {
 	}
 	f1, f2 := s1.label, s2.label
 	if f1 > defaultFinal && f2 > defaultFinal && f1 != f2 {
-		panic("conflict label")
+		panic(fmt.Errorf("conflict label: %d & %d", f1.toExternal(), f2.toExternal()))
 	}
 	return finalMax(f1, f2)
 }
-func finalMax(a, b finalLabel) finalLabel {
+func finalMax(a, b stateLabel) stateLabel {
 	if a > b {
 		return a
 	}
@@ -143,12 +146,60 @@ func (union) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 	for {
 		b := b1
 		id1, id2 := next1, next2
-		if id1 == invalidID && id2 == invalidID {
+		if id1 < 0 && id2 < 0 {
 			break
-		} else if id1 == invalidID {
+		} else if id1 < 0 {
 			b = b2
 			b2, next2 = it2()
-		} else if id2 == invalidID {
+		} else if id2 < 0 {
+			b = b1
+			b1, next1 = it1()
+		} else {
+			if b1 == b2 {
+				b1, next1 = it1()
+				b2, next2 = it2()
+			} else if b1 < b2 {
+				id2 = invalidID
+				b1, next1 = it1()
+			} else {
+				b = b2
+				id1 = invalidID
+				b2, next2 = it2()
+			}
+		}
+		visit(b, id1, id2)
+	}
+}
+
+type difference struct{}
+
+func (difference) mergeLabel(s1, s2 *state) stateLabel {
+	if s1 == nil {
+		return notFinal
+	}
+	if s2 == nil {
+		return s1.label
+	}
+	f1, f2 := s1.label, s2.label
+	if f2.final() {
+		return notFinal
+	}
+	return f1
+}
+
+func (difference) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
+	it1, it2 := s1.iter(), s2.iter()
+	b1, next1 := it1()
+	b2, next2 := it2()
+	for {
+		b := b1
+		id1, id2 := next1, next2
+		if id1 < 0 && id2 < 0 {
+			break
+		} else if id1 < 0 {
+			b = b2
+			b2, next2 = it2()
+		} else if id2 < 0 {
 			b = b1
 			b1, next1 = it1()
 		} else {

@@ -80,7 +80,7 @@ type u8 struct {
 func (u *u8) m() *Machine {
 	lo, hi := u.lo, u.hi
 	n := calcN(hi)
-	m := &Machine{make(states, n+1)}
+	m := &Machine{make(states, n+1), 0}
 	m.states[n] = finalState()
 	for i := n - 1; i >= 1; i-- {
 		l, h := byte(lo&maskx), byte(hi&maskx)

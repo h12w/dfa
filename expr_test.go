@@ -40,6 +40,7 @@ var threeToken = func() *Machine {
 
 var bsas = func() *Machine {
 	bsa := con(zeroOrMore(s("b")), s("a"))
+	//	fmt.Println(bsa.dump())
 	return zeroOrMore(bsa, bsa)
 }()
 
@@ -111,6 +112,27 @@ func TestExpr(t *testing.T) {
 			s2$
 				'a'     s1
 		`},
+		{
+			con(s(`a`), zeroOrOne(s(`b`))), `
+			s0
+				'a'     s1
+			s1$
+				'b'     s2
+			s2$
+			`,
+		},
+		{
+			con(s(`a`), zeroOrMore(s(`b`))), `
+			s0
+				'a'     s1
+			s1$
+				'b'     s1
+			`,
+		},
+		{
+			s(`a`).Repeat(3),
+			s(`aaa`).dump(),
+		},
 		{
 			threeToken, `
 			s0
@@ -228,7 +250,18 @@ func TestExpr(t *testing.T) {
 				'b'     s1
 			`,
 		},
+		{
+			c("ab").Exclude(c("a")), `
+			s0
+				'b'     s1
+			s1$
+			`,
+		},
+		//		{
+		//			cc(s(`a`).ZeroOrMore(), s(`a`)), `
+		//			`,
+		//		},
 	} {
-		expect(fmt.Sprintf("dump of test case %d", i), testcase.m.dump()).Equal(gspec.Unindent(testcase.s))
+		expect(fmt.Sprintf("dump of test case %d", i), testcase.m.Minimize().dump()).Equal(gspec.Unindent(testcase.s))
 	}
 }

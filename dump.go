@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -49,6 +51,10 @@ func (t *trans) rangeString() string {
 	return quote(t.s) + "-" + quote(t.e)
 }
 func quote(b byte) string {
+	switch b {
+	case '\'', '"', '`':
+		return string(rune(b))
+	}
 	if b < utf8.RuneSelf && strconv.IsPrint(rune(b)) {
 		return strconv.QuoteRune(rune(b))
 	}
@@ -86,6 +92,19 @@ func (m *Machine) SaveSVG(file string, opt ...*GraphOption) error {
 	return m.writeDotFormat(w, opt[0])
 }
 
+func (m *Machine) SaveDot(file string, opt ...*GraphOption) error {
+	f, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if len(opt) == 0 {
+		opt = []*GraphOption{{}}
+	}
+	return m.writeDotFormat(f, opt[0])
+
+}
+
 func (m *Machine) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 	var w bytes.Buffer
 	w.WriteString("digraph g {\n")
@@ -115,12 +134,16 @@ func (m *Machine) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 }
 func (s *state) writeDotFormat(w io.Writer, sid int) {
 	if s.final() {
-		fmt.Fprintf(w, "\t%d [shape=doublecircle, width=\".18\"];\n", sid)
+		label := ""
+		if s.label > defaultFinal {
+			label = "L" + strconv.Itoa(int(s.label.toExternal()))
+		}
+		fmt.Fprintf(w, "\t%d [shape=doublecircle, width=\".18\", xlabel=\"%s\"];\n", sid, label)
 	}
 	m := make(map[int]bool)
 	for _, trans := range s.table {
 		if !m[trans.next] {
-			fmt.Fprintf(w, "\t%d -> %d [label=\"%s\"];\n", sid, trans.next, s.table.description(trans.next))
+			fmt.Fprintf(w, "\t%d -> %d [label=\"%s\"];\n", sid, trans.next, dotEscape(s.table.description(trans.next)))
 			m[trans.next] = true
 		}
 	}
@@ -135,4 +158,7 @@ func (table transTable) description(sid int) (l string) {
 		}
 	}
 	return
+}
+func dotEscape(s string) string {
+	return strings.Replace(s, `"`, `\"`, -1)
 }

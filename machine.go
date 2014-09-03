@@ -2,20 +2,25 @@ package dfa
 
 type Machine struct {
 	states
+	start int
 }
 type states []state
 
 func (m *Machine) clone() *Machine {
-	return &Machine{m.states.clone()}
+	return &Machine{m.states.clone(), m.start}
+}
+
+func (m *Machine) Count() int {
+	return m.states.count()
 }
 
 func (m *Machine) startState() *state {
-	return &m.states[0]
+	return &m.states[m.start]
 }
 
 func (m *Machine) As(label int) *Machine {
 	m.states.eachFinal(func(f *state) {
-		f.label = finalLabel(label).toInternal()
+		f.label = stateLabel(label).toInternal()
 	})
 	return m
 }
@@ -29,7 +34,7 @@ func (m *Machine) Match(src []byte) (size, label int, matched bool) {
 	)
 	for sid >= 0 {
 		s = &m.states[sid]
-		if s.final() {
+		if s.label >= defaultFinal {
 			matchedState = s
 			matchedPos = pos
 		}
@@ -75,7 +80,7 @@ func (ss states) clone() states {
 }
 
 func (ss states) state(id int) *state {
-	if id == -1 {
+	if id < 0 {
 		return nil
 	}
 	return &ss[id]

@@ -1,8 +1,10 @@
 package dfa
 
+import "fmt"
+
 type state struct {
 	table transTable
-	label finalLabel
+	label stateLabel
 }
 type transTable []trans
 type trans struct {
@@ -35,6 +37,23 @@ func (s *state) connect(o *state) {
 	a := s.table.toTransArray()
 	o.each(func(t *trans) {
 		a.setBetween(t.s, t.e, t.next)
+	})
+	s.table = a.toTransTable()
+}
+
+func (s *state) filterConnect(o *state, filter func(byte) bool) {
+	a := s.table.toTransArray()
+	o.each(func(t *trans) {
+		b := t.s
+		for {
+			if filter(b) {
+				a.set(b, t.next)
+			}
+			if b == t.e {
+				break
+			}
+			b++
+		}
 	})
 	s.table = a.toTransTable()
 }
@@ -75,7 +94,7 @@ func (s *state) each(visit func(*trans)) {
 	s.table.each(visit)
 }
 
-func (s *state) next(b byte) (sid int) {
+func (s *state) seqNext(b byte) (sid int) {
 	for i := range s.table {
 		if s.table[i].s <= b && b <= s.table[i].e {
 			return s.table[i].next
@@ -84,14 +103,14 @@ func (s *state) next(b byte) (sid int) {
 	return invalidID
 }
 
-func (s *state) binaryNext(b byte) (sid int) {
+func (s *state) next(b byte) (sid int) {
 	min, max := 0, len(s.table)-1
 	for min <= max {
 		mid := (min + max) / 2
-		if s.table[mid].s <= b && b <= s.table[mid].e {
-			return s.table[mid].next
-		} else if b < s.table[mid].s {
+		if b < s.table[mid].s {
 			max = mid - 1
+		} else if s.table[mid].s <= b && b <= s.table[mid].e {
+			return s.table[mid].next
 		} else {
 			min = mid + 1
 		}
@@ -112,7 +131,7 @@ func (table *transTable) clone() transTable {
 func (table *transTable) toTransArray() transArray {
 	a := newTransArray()
 	table.each(func(t *trans) {
-		for i := t.s; i <= t.e; i++ {
+		for i := int(t.s); i <= int(t.e); i++ {
 			a[i] = t.next
 		}
 	})
@@ -127,12 +146,12 @@ func newTransArray() (a transArray) {
 }
 
 func (a *transArray) set(b byte, next int) *transArray {
-	if a[b] == invalidID {
+	if a[b] < 0 {
 		a[b] = next
 		return a
 	}
 	if a[b] != next {
-		panic("a different trans already set")
+		panic(fmt.Errorf("byte %s has already been assigned a different state %d", quote(b), next))
 	}
 	return a
 }
@@ -153,7 +172,7 @@ func (a *transArray) setBetween(lo, hi byte, next int) *transArray {
 func (a *transArray) toTransTable() (table transTable) {
 	i := 0
 	for ; i < len(a); i++ {
-		if a[i] != invalidID {
+		if a[i] >= 0 {
 			break
 		}
 	}
@@ -163,7 +182,7 @@ func (a *transArray) toTransTable() (table transTable) {
 	table = append(table, trans{byte(i), byte(i), a[i]})
 	i++
 	for ; i < len(a); i++ {
-		if a[i] != invalidID {
+		if a[i] >= 0 {
 			b := byte(i)
 			last := table[len(table)-1]
 			if b == last.e+1 && a[i] == last.next {

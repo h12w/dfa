@@ -3,29 +3,30 @@ package dfa
 const (
 	invalidID      = -1
 	trivialFinalID = -2
+	excludingID    = -3
 )
 
-type finalLabel int
+type stateLabel int
 
 const (
-	notFinal          finalLabel = 0
-	defaultFinal      finalLabel = 1
-	labeledFinalStart finalLabel = 2
+	notFinal          stateLabel = 0
+	defaultFinal      stateLabel = 1
+	labeledFinalStart stateLabel = 2
 )
 
-func (l finalLabel) final() bool {
+func (l stateLabel) final() bool {
 	return l >= defaultFinal
 }
 
-func (l finalLabel) labeled() bool {
+func (l stateLabel) labeled() bool {
 	return l >= labeledFinalStart
 }
 
-func (l finalLabel) toInternal() finalLabel {
+func (l stateLabel) toInternal() stateLabel {
 	return l + labeledFinalStart
 }
 
-func (l finalLabel) toExternal() int {
+func (l stateLabel) toExternal() int {
 	if l >= labeledFinalStart {
 		return int(l - labeledFinalStart)
 	}
