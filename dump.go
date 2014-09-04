@@ -28,7 +28,7 @@ func (s *state) dump(ss []state, sid int) string {
 			w.WriteString(strconv.Itoa(int(s.label)))
 		}
 	}
-	for _, trans := range s.table {
+	for _, trans := range s.table.a {
 		w.WriteByte('\n')
 		w.WriteString("\t")
 		w.WriteString(trans.dump())
@@ -141,7 +141,7 @@ func (s *state) writeDotFormat(w io.Writer, sid int) {
 		fmt.Fprintf(w, "\t%d [shape=doublecircle, width=\".18\", xlabel=\"%s\"];\n", sid, label)
 	}
 	m := make(map[int]bool)
-	for _, trans := range s.table {
+	for _, trans := range s.table.a {
 		if !m[trans.next] {
 			fmt.Fprintf(w, "\t%d -> %d [label=\"%s\"];\n", sid, trans.next, dotEscape(s.table.description(trans.next)))
 			m[trans.next] = true
@@ -149,7 +149,7 @@ func (s *state) writeDotFormat(w io.Writer, sid int) {
 	}
 }
 func (table transTable) description(sid int) (l string) {
-	for _, trans := range table {
+	for _, trans := range table.a {
 		if trans.next == sid {
 			if l != "" {
 				l += `\n`

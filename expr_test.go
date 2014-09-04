@@ -80,7 +80,7 @@ func TestExpr(t *testing.T) {
 		`},
 		{
 			b('a', 'c'),
-			c("abc").dump(),
+			c("abc").Minimize().dump(),
 		},
 		{
 			con(s("a"), s("b")),
@@ -88,7 +88,7 @@ func TestExpr(t *testing.T) {
 		},
 		{
 			or(s("a"), s("b")),
-			c("ab").dump(),
+			c("ab").Minimize().dump(),
 		},
 		{
 			zeroOrMore(s("a")), `

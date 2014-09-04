@@ -7,6 +7,9 @@ type M struct {
 type states []state
 
 func (m *M) clone() *M {
+	if m == nil {
+		return nil
+	}
 	return &M{m.states.clone(), m.start}
 }
 

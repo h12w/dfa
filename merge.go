@@ -48,31 +48,12 @@ func (q *merger) mergeState(s1, s2 *state) state {
 	return state{a.toTransTable(), q.mergeLabel(s1, s2)}
 }
 
-// getKey merges trivial final states into a unique merged state(-2,-2).
-func (q *merger) getKey(id1, id2 int) [2]int {
-	/*
-		const trivialFinalID = -2
-		if id1 >= 0 && q.m1.states[id1].trivialFinal() {
-			id1 = trivialFinalID
-			if id2 < 0 {
-				id2 = trivialFinalID
-			}
-		}
-		if id2 >= 0 && q.m2.states[id2].trivialFinal() {
-			id2 = trivialFinalID
-			if id1 < 0 {
-				id1 = trivialFinalID
-			}
-		}
-	*/
-	return [2]int{id1, id2}
-}
 func (s *state) trivialFinal() bool {
-	return s.label == defaultFinal && len(s.table) == 0
+	return s.label == defaultFinal && len(s.table.a) == 0
 }
 
 func (q *merger) getID(id1, id2 int) int {
-	key := q.getKey(id1, id2)
+	key := [2]int{id1, id2}
 	if id, ok := q.idm[key]; ok {
 		return id
 	}
@@ -104,17 +85,17 @@ func (intersection) mergeLabel(s1, s2 *state) stateLabel {
 
 func (intersection) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
-	b1, id1 := it1()
-	b2, id2 := it2()
+	b1, id1 := it1.next()
+	b2, id2 := it2.next()
 	for id1 >= 0 && id2 >= 0 {
 		if b1 == b2 {
 			visit(b1, id1, id2)
-			b1, id1 = it1()
-			b2, id2 = it2()
+			b1, id1 = it1.next()
+			b2, id2 = it2.next()
 		} else if b1 < b2 {
-			b1, id1 = it1()
+			b1, id1 = it1.next()
 		} else {
-			b2, id2 = it2()
+			b2, id2 = it2.next()
 		}
 	}
 }
@@ -143,8 +124,8 @@ func finalMax(a, b stateLabel) stateLabel {
 
 func (union) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
-	b1, next1 := it1()
-	b2, next2 := it2()
+	b1, next1 := it1.next()
+	b2, next2 := it2.next()
 	for {
 		b := b1
 		id1, id2 := next1, next2
@@ -152,21 +133,21 @@ func (union) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 			break
 		} else if id1 < 0 {
 			b = b2
-			b2, next2 = it2()
+			b2, next2 = it2.next()
 		} else if id2 < 0 {
 			b = b1
-			b1, next1 = it1()
+			b1, next1 = it1.next()
 		} else {
 			if b1 == b2 {
-				b1, next1 = it1()
-				b2, next2 = it2()
+				b1, next1 = it1.next()
+				b2, next2 = it2.next()
 			} else if b1 < b2 {
 				id2 = invalidID
-				b1, next1 = it1()
+				b1, next1 = it1.next()
 			} else {
 				b = b2
 				id1 = invalidID
-				b2, next2 = it2()
+				b2, next2 = it2.next()
 			}
 		}
 		visit(b, id1, id2)
@@ -191,8 +172,8 @@ func (difference) mergeLabel(s1, s2 *state) stateLabel {
 
 func (difference) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
-	b1, next1 := it1()
-	b2, next2 := it2()
+	b1, next1 := it1.next()
+	b2, next2 := it2.next()
 	for {
 		b := b1
 		id1, id2 := next1, next2
@@ -200,21 +181,21 @@ func (difference) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 			break
 		} else if id1 < 0 {
 			b = b2
-			b2, next2 = it2()
+			b2, next2 = it2.next()
 		} else if id2 < 0 {
 			b = b1
-			b1, next1 = it1()
+			b1, next1 = it1.next()
 		} else {
 			if b1 == b2 {
-				b1, next1 = it1()
-				b2, next2 = it2()
+				b1, next1 = it1.next()
+				b2, next2 = it2.next()
 			} else if b1 < b2 {
 				id2 = invalidID
-				b1, next1 = it1()
+				b1, next1 = it1.next()
 			} else {
 				b = b2
 				id1 = invalidID
-				b2, next2 = it2()
+				b2, next2 = it2.next()
 			}
 		}
 		visit(b, id1, id2)

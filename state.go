@@ -6,7 +6,9 @@ type state struct {
 	table transTable
 	label stateLabel
 }
-type transTable []trans
+type transTable struct {
+	a []trans
+}
 type trans struct {
 	s, e byte
 	next int
@@ -69,31 +71,51 @@ func (s *state) clone() state {
 	return state{s.table.clone(), s.label}
 }
 
-func (s *state) iter() func() (byte, int) {
-	if s == nil || len(s.table) == 0 {
-		return func() (byte, int) {
-			return 0, invalidID
+func (s *state) iter() tableIter {
+	if s == nil {
+		return tableIter{
+			n: invalidID,
 		}
 	}
-	i := 0
-	b := s.table[i].s
-	return func() (byte, int) {
-		defer func() {
-			if i < len(s.table) {
-				if b == s.table[i].e {
-					i++
-					if i < len(s.table) {
-						b = s.table[i].s
-					}
-				} else {
-					b++
-				}
-			}
-		}()
-		if i < len(s.table) {
-			return b, s.table[i].next
-		}
+	return s.table.iter()
+}
+
+type tableIter struct {
+	t *transTable
+	i int
+	b byte
+	n int
+}
+
+func (it *tableIter) next() (rb byte, rnext int) {
+	if it.n == invalidID {
 		return 0, invalidID
+	}
+	rb, rnext = it.b, it.n
+	if it.b == it.t.a[it.i].e {
+		it.i++
+		if it.i < len(it.t.a) {
+			it.b = it.t.a[it.i].s
+			it.n = it.t.a[it.i].next
+		} else {
+			it.n = invalidID
+		}
+	} else {
+		it.b++
+	}
+	return
+}
+
+func (t *transTable) iter() tableIter {
+	if len(t.a) == 0 {
+		return tableIter{
+			n: invalidID,
+		}
+	}
+	return tableIter{
+		t: t,
+		b: t.a[0].s,
+		n: t.a[0].next,
 	}
 }
 
@@ -102,22 +124,22 @@ func (s *state) each(visit func(*trans)) {
 }
 
 func (s *state) seqNext(b byte) (sid int) {
-	for i := range s.table {
-		if s.table[i].s <= b && b <= s.table[i].e {
-			return s.table[i].next
+	for i := range s.table.a {
+		if s.table.a[i].s <= b && b <= s.table.a[i].e {
+			return s.table.a[i].next
 		}
 	}
 	return invalidID
 }
 
 func (s *state) next(b byte) (sid int) {
-	min, max := 0, len(s.table)-1
+	min, max := 0, len(s.table.a)-1
 	for min <= max {
 		mid := (min + max) / 2
-		if b < s.table[mid].s {
+		if b < s.table.a[mid].s {
 			max = mid - 1
-		} else if s.table[mid].s <= b && b <= s.table[mid].e {
-			return s.table[mid].next
+		} else if s.table.a[mid].s <= b && b <= s.table.a[mid].e {
+			return s.table.a[mid].next
 		} else {
 			min = mid + 1
 		}
@@ -126,13 +148,13 @@ func (s *state) next(b byte) (sid int) {
 }
 
 func (table *transTable) each(visit func(*trans)) {
-	for i := range *table {
-		visit(&(*table)[i])
+	for i := range table.a {
+		visit(&table.a[i])
 	}
 }
 
 func (table *transTable) clone() transTable {
-	return append(transTable(nil), *table...)
+	return transTable{append([]trans(nil), table.a...)}
 }
 
 func (table *transTable) toTransArray() transArray {
@@ -186,16 +208,16 @@ func (a *transArray) toTransTable() (table transTable) {
 	if i == 256 {
 		return
 	}
-	table = append(table, trans{byte(i), byte(i), a[i]})
+	table.a = append(table.a, trans{byte(i), byte(i), a[i]})
 	i++
 	for ; i < len(a); i++ {
 		if a[i] >= 0 {
 			b := byte(i)
-			last := table[len(table)-1]
+			last := table.a[len(table.a)-1]
 			if b == last.e+1 && a[i] == last.next {
-				table[len(table)-1].e = b
+				table.a[len(table.a)-1].e = b
 			} else {
-				table = append(table, trans{b, b, a[i]})
+				table.a = append(table.a, trans{b, b, a[i]})
 			}
 		}
 	}

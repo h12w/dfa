@@ -6,10 +6,11 @@ import (
 )
 
 func CharClass(name string) (m *M) {
+	ms := []*M{}
 	eachRangeInCharClass(name, func(lo, hi rune) {
-		m = m.or(Between(lo, hi))
+		ms = append(ms, Between(lo, hi))
 	})
-	return m.Minimize()
+	return Or(ms...).Minimize()
 }
 
 func eachRangeInCharClass(name string, visit func(lo, hi rune)) {

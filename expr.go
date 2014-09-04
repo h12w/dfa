@@ -38,7 +38,7 @@ func Char(s string) (m *M) {
 		}
 		m = m.or(Between(r, r))
 	}
-	return m.Minimize()
+	return m
 }
 
 func Con(ms ...*M) *M {
@@ -46,6 +46,9 @@ func Con(ms ...*M) *M {
 }
 func (m1 *M) con(m2 *M) *M {
 	m := m1.clone()
+	if m2 == nil {
+		return m
+	}
 	m2 = m2.clone()
 	m2.shiftID(m.states.count() - 1)
 	m.eachFinal(func(f *state) {
@@ -59,7 +62,7 @@ func (m1 *M) con(m2 *M) *M {
 }
 
 func Or(ms ...*M) *M {
-	return opMany((*M).or, ms).Minimize()
+	return opMany((*M).or, ms)
 }
 func (m1 *M) or(m2 *M) *M {
 	return newMerger(m1, m2, union{}).merge()
@@ -87,7 +90,7 @@ func (m *M) loop() *M {
 	m.eachFinal(func(f *state) {
 		f.connect(m.startState())
 	})
-	return m.Minimize()
+	return m
 }
 
 func (m *M) Loop(filters ...func(b byte) bool) *M {
@@ -95,7 +98,7 @@ func (m *M) Loop(filters ...func(b byte) bool) *M {
 	m.eachFinal(func(f *state) {
 		f.filterConnect(m.startState(), filters)
 	})
-	return m.Minimize()
+	return m
 }
 func IfNot(bs ...byte) func(byte) bool {
 	return func(input byte) bool {
@@ -143,11 +146,11 @@ func (m *M) Exclude(ms ...*M) *M {
 }
 
 func (m *M) Repeat(n int) *M {
-	mm := m.clone()
-	for i := 0; i < n-1; i++ {
-		mm = mm.con(m)
+	ms := make([]*M, n)
+	for i := range ms {
+		ms[i] = m
 	}
-	return mm
+	return Con(ms...)
 }
 
 func opMany(op func(_, _ *M) *M, ms []*M) *M {
@@ -157,9 +160,20 @@ func opMany(op func(_, _ *M) *M, ms []*M) *M {
 	case 1:
 		return ms[0].clone()
 	}
-	m := ms[0].clone()
-	for i := 1; i < len(ms); i++ {
-		m = op(m, ms[i])
+	for len(ms) > 1 {
+		if len(ms)%2 != 0 {
+			if ms[len(ms)-1] == nil {
+				ms = ms[:len(ms)-1]
+			} else {
+				ms = append(ms, nil)
+			}
+		}
+		cur := 0
+		for i := 0; i < len(ms)-1; i += 2 {
+			ms[cur] = op(ms[i], ms[i+1])
+			cur++
+		}
+		ms = ms[:cur]
 	}
-	return m
+	return ms[0]
 }

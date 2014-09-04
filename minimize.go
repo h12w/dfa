@@ -12,8 +12,8 @@ func (m *M) eachUnreachable(visit func(int)) {
 		more = false
 		for i := range reachFinal {
 			if !reachFinal[i] {
-				for j := range m.states[i].table {
-					next := m.states[i].table[j].next
+				for j := range m.states[i].table.a {
+					next := m.states[i].table.a[j].next
 					if next >= 0 && reachFinal[next] {
 						reachFinal[i] = true
 						more = true
@@ -53,7 +53,7 @@ func (m *M) Minimize() *M {
 	diff := newDiff(n)
 	diff.eachFalse(func(i, j int) {
 		s, t := m.states[i], m.states[j]
-		if s.label != t.label || s.table.toTransSet() != t.table.toTransSet() {
+		if s.label != t.label || !s.table.positionEqual(&t.table) {
 			diff.set(i, j)
 		}
 	})
@@ -62,15 +62,15 @@ func (m *M) Minimize() *M {
 		diff.eachFalse(func(i, j int) {
 			s, t := m.states[i], m.states[j]
 			si, ti := s.iter(), t.iter()
-			_, sid := si()
-			_, tid := ti()
+			_, sid := si.next()
+			_, tid := ti.next()
 			for sid != -1 && tid != -1 {
 				if sid != tid && diff.get(sid, tid) {
 					diff.set(i, j)
 					break
 				}
-				_, sid = si()
-				_, tid = ti()
+				_, sid = si.next()
+				_, tid = ti.next()
 			}
 		})
 	}
@@ -90,20 +90,19 @@ func (m *M) Minimize() *M {
 	return m.or(m) // m.or(m) is also a way to remove unreachable nodes
 }
 
-type transSet [256]bool
-
-func (t *transTable) toTransSet() (s transSet) {
-	t.each(func(t *trans) {
-		b := t.s
-		for {
-			s[b] = true
-			if b == t.e {
-				break
-			}
-			b++
+func (t *transTable) positionEqual(o *transTable) bool {
+	ti, oi := t.iter(), o.iter()
+	for {
+		tb, tnext := ti.next()
+		ob, onext := oi.next()
+		if tnext < 0 || onext < 0 {
+			return tnext == onext
 		}
-	})
-	return
+		if tb != ob {
+			return false
+		}
+	}
+	return true
 }
 
 // 0: 1, 2, ..., n-1

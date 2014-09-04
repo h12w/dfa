@@ -24,7 +24,7 @@ func (m *FastM) Size() int {
 
 func (s *state) toFast(fm *FastM) (fs FastS) {
 	fs.Label = int(s.label - labeledFinalStart)
-	for _, trans := range s.table {
+	for _, trans := range s.table.a {
 		b := trans.s
 		for {
 			fs.Trans[b] = &fm.States[trans.next]
