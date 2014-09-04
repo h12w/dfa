@@ -21,7 +21,7 @@ func Between(lo, hi rune) *M {
 	}
 	u := &u8s{}
 	u.between(lo, hi)
-	return u.m()
+	return u.m().Minimize()
 }
 
 func BetweenByte(s, e byte) *M {
@@ -36,29 +36,15 @@ func Char(s string) (m *M) {
 		if r == utf8.RuneError {
 			panic("invalid rune")
 		}
-		m = or2(m, Between(r, r))
+		m = m.or(Between(r, r))
 	}
-	return m
-}
-
-func opMany(op func(_, _ *M) *M, ms []*M) *M {
-	switch len(ms) {
-	case 0:
-		return nil
-	case 1:
-		return ms[0].clone()
-	}
-	m := ms[0].clone()
-	for i := 1; i < len(ms); i++ {
-		m = op(m, ms[i])
-	}
-	return m
+	return m.Minimize()
 }
 
 func Con(ms ...*M) *M {
-	return opMany(con2, ms)
+	return opMany((*M).con, ms).Minimize()
 }
-func con2(m1, m2 *M) *M {
+func (m1 *M) con(m2 *M) *M {
 	m := m1.clone()
 	m2 = m2.clone()
 	m2.shiftID(m.states.count() - 1)
@@ -73,25 +59,21 @@ func con2(m1, m2 *M) *M {
 }
 
 func Or(ms ...*M) *M {
-	return opMany(or2, ms)
+	return opMany((*M).or, ms).Minimize()
 }
-func or2(m1, m2 *M) *M {
+func (m1 *M) or(m2 *M) *M {
 	return newMerger(m1, m2, union{}).merge()
 }
 
 func And(ms ...*M) *M {
-	return opMany(and2, ms)
+	return opMany((*M).and, ms)
 }
-func and2(m1, m2 *M) *M {
+func (m1 *M) and(m2 *M) *M {
 	return newMerger(m1, m2, intersection{}).merge()
 }
 
 func (m *M) ZeroOrMore() *M {
-	m = m.OneOrMore()
-	if len(m.states) == 2 {
-		m.states = m.states[1:]
-		m.shiftID(-1)
-	}
+	m = m.loop()
 	m.startState().label = defaultFinal
 	return m
 }
@@ -100,20 +82,34 @@ func ZeroOrMore(ms ...*M) *M {
 	return Con(ms...).ZeroOrMore()
 }
 
-func (m *M) Loop(filter func(b byte) bool) *M {
-	m = m.clone()
-	m.eachFinal(func(f *state) {
-		f.filterConnect(m.startState(), filter)
-	})
-	return m
-}
-
-func (m *M) OneOrMore() *M {
+func (m *M) loop() *M {
 	m = m.clone()
 	m.eachFinal(func(f *state) {
 		f.connect(m.startState())
 	})
-	return m
+	return m.Minimize()
+}
+
+func (m *M) Loop(filters ...func(b byte) bool) *M {
+	m = m.clone()
+	m.eachFinal(func(f *state) {
+		f.filterConnect(m.startState(), filters)
+	})
+	return m.Minimize()
+}
+func IfNot(bs ...byte) func(byte) bool {
+	return func(input byte) bool {
+		for _, b := range bs {
+			if b == input {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func (m *M) OneOrMore() *M {
+	return m.loop()
 }
 
 func OneOrMore(ms ...*M) *M {
@@ -143,17 +139,27 @@ func (m *M) Complement() *M {
 }
 
 func (m *M) Exclude(ms ...*M) *M {
-	ex := Or(ms...)
-	ex.eachFinal(func(s *state) {
-		s.label = 9999 // TODO remove this hack
-	})
-	return newMerger(m, ex, difference{}).merge().deleteUnreachable()
+	return newMerger(m, Or(ms...), difference{}).merge().deleteUnreachable()
 }
 
 func (m *M) Repeat(n int) *M {
 	mm := m.clone()
 	for i := 0; i < n-1; i++ {
-		mm = con2(mm, m)
+		mm = mm.con(m)
 	}
 	return mm
+}
+
+func opMany(op func(_, _ *M) *M, ms []*M) *M {
+	switch len(ms) {
+	case 0:
+		return nil
+	case 1:
+		return ms[0].clone()
+	}
+	m := ms[0].clone()
+	for i := 1; i < len(ms); i++ {
+		m = op(m, ms[i])
+	}
+	return m
 }

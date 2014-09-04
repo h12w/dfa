@@ -50,19 +50,21 @@ func (q *merger) mergeState(s1, s2 *state) state {
 
 // getKey merges trivial final states into a unique merged state(-2,-2).
 func (q *merger) getKey(id1, id2 int) [2]int {
-	const trivialFinalID = -2
-	if id1 >= 0 && q.m1.states[id1].trivialFinal() {
-		id1 = trivialFinalID
-		if id2 < 0 {
-			id2 = trivialFinalID
-		}
-	}
-	if id2 >= 0 && q.m2.states[id2].trivialFinal() {
-		id2 = trivialFinalID
-		if id1 < 0 {
+	/*
+		const trivialFinalID = -2
+		if id1 >= 0 && q.m1.states[id1].trivialFinal() {
 			id1 = trivialFinalID
+			if id2 < 0 {
+				id2 = trivialFinalID
+			}
 		}
-	}
+		if id2 >= 0 && q.m2.states[id2].trivialFinal() {
+			id2 = trivialFinalID
+			if id1 < 0 {
+				id1 = trivialFinalID
+			}
+		}
+	*/
 	return [2]int{id1, id2}
 }
 func (s *state) trivialFinal() bool {

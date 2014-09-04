@@ -35,19 +35,18 @@ var threeToken = func() *M {
 	decimalLit := oneOrMore(decimalDigit).As(decimalLabel)
 	ident := con(letter, zeroOrMore(or(letter, decimalDigit))).As(identLabel)
 
-	return or(hexLit, decimalLit, ident)
-}()
+	return or(hexLit, decimalLit, ident).Minimize()
+}
 
 var bsas = func() *M {
 	bsa := con(zeroOrMore(s("b")), s("a"))
-	//	fmt.Println(bsa.dump())
 	return zeroOrMore(bsa, bsa)
-}()
+}
 
 var asbs = func() *M {
 	asb := con(zeroOrMore(s("a")), s("b"))
 	return zeroOrMore(asb, asb)
-}()
+}
 
 func TestExpr(t *testing.T) {
 	expect := gspec.Expect(t.FailNow)
@@ -134,7 +133,7 @@ func TestExpr(t *testing.T) {
 			s(`aaa`).dump(),
 		},
 		{
-			threeToken, `
+			threeToken(), `
 			s0
 				'0'     s1
 				'1'-'9' s2
@@ -185,7 +184,19 @@ func TestExpr(t *testing.T) {
 			`,
 		},
 		{
-			bsas, `
+			b(0x3bf, 0x3c0), `
+			s0
+				ce      s1
+				cf      s2
+			s1
+				bf      s3
+			s2
+				80      s3
+			s3$
+			`,
+		},
+		{
+			bsas(), `
 			s0$
 				'a'     s1
 				'b'     s0
@@ -194,7 +205,7 @@ func TestExpr(t *testing.T) {
 				'b'     s1
 		`},
 		{
-			bsas.Complement(), `
+			bsas().Complement(), `
 			s0
 				'a'     s1
 				'b'     s0
@@ -203,7 +214,7 @@ func TestExpr(t *testing.T) {
 				'b'     s1
 		`},
 		{
-			or(bsas, asbs.Complement()), `
+			or(bsas(), asbs().Complement()), `
 			s0$
 				'a'     s1
 				'b'     s2
@@ -219,7 +230,7 @@ func TestExpr(t *testing.T) {
 			`,
 		},
 		{
-			and(bsas, asbs.Complement()), `
+			and(bsas(), asbs().Complement()), `
 			s0
 				'a'     s1
 				'b'     s2
@@ -235,7 +246,7 @@ func TestExpr(t *testing.T) {
 			`,
 		},
 		{
-			bsas.Exclude(asbs.Complement()), `
+			bsas().Exclude(asbs().Complement()), `
 			s0$
 				'a'     s1
 				'b'     s2
@@ -264,4 +275,10 @@ func TestExpr(t *testing.T) {
 	} {
 		expect(fmt.Sprintf("dump of test case %d", i), testcase.m.Minimize().dump()).Equal(gspec.Unindent(testcase.s))
 	}
+}
+
+func TestSingle(t *testing.T) {
+	//CharClass("L").SaveSVG("classL.svg")
+	b(0x3bf, 0x3c0) //.SaveSVG("classL.svg")
+	//or(b(0x3bf, 0x3bf), b(0x3c0, 0x3c0)).SaveSVG("classL.svg")
 }

@@ -46,6 +46,9 @@ func (m *M) deleteUnreachable() *M {
 }
 
 func (m *M) Minimize() *M {
+	if m == nil {
+		return nil
+	}
 	n := m.states.count()
 	diff := newDiff(n)
 	diff.eachFalse(func(i, j int) {
@@ -84,15 +87,20 @@ func (m *M) Minimize() *M {
 			})
 		})
 	}
-	return or2(m, m) // or2(m, m) is also a way to remove unreachable nodes
+	return m.or(m) // m.or(m) is also a way to remove unreachable nodes
 }
 
 type transSet [256]bool
 
 func (t *transTable) toTransSet() (s transSet) {
 	t.each(func(t *trans) {
-		for b := t.s; b <= t.e; b++ {
+		b := t.s
+		for {
 			s[b] = true
+			if b == t.e {
+				break
+			}
+			b++
 		}
 	})
 	return

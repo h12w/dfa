@@ -41,12 +41,19 @@ func (s *state) connect(o *state) {
 	s.table = a.toTransTable()
 }
 
-func (s *state) filterConnect(o *state, filter func(byte) bool) {
+func (s *state) filterConnect(o *state, filters []func(byte) bool) {
 	a := s.table.toTransArray()
 	o.each(func(t *trans) {
 		b := t.s
 		for {
-			if filter(b) {
+			connect := true
+			for _, filter := range filters {
+				if !filter(b) {
+					connect = false
+					break
+				}
+			}
+			if connect {
 				a.set(b, t.next)
 			}
 			if b == t.e {
