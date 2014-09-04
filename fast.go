@@ -7,7 +7,7 @@ type FastM struct {
 }
 type FastS struct {
 	Label int
-	Trans [256]*FastS
+	Trans map[byte]*FastS
 }
 
 func (m *M) ToFast() *FastM {
@@ -23,6 +23,7 @@ func (m *FastM) Size() int {
 }
 
 func (s *state) toFast(fm *FastM) (fs FastS) {
+	fs.Trans = make(map[byte]*FastS)
 	fs.Label = int(s.label - labeledFinalStart)
 	for _, trans := range s.table.a {
 		b := trans.s
