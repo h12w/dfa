@@ -34,16 +34,15 @@ type u8s struct {
 func (u *u8s) between(lo, hi rune) {
 	for _, l := range runeRanges {
 		if lo <= l {
-			u.betweenRune(lo, rMin(l, hi))
-			lo = rMin(l+1, hi)
+			if hi > l {
+				u.betweenRune(lo, l)
+				lo = l + 1
+			} else {
+				u.betweenRune(lo, hi)
+				break
+			}
 		}
 	}
-}
-func rMin(a, b rune) rune {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func (u *u8s) betweenRune(lo, hi rune) {
@@ -59,7 +58,9 @@ func (u *u8s) betweenRune(lo, hi rune) {
 			}
 		}
 	}
-	u.add(lo, hi)
+	if lo <= hi {
+		u.add(lo, hi)
+	}
 }
 
 func (s *u8s) add(lo, hi rune) {
@@ -68,7 +69,7 @@ func (s *u8s) add(lo, hi rune) {
 
 func (s *u8s) m() (m *M) {
 	for i := range s.a {
-		m = or2(m, s.a[i].m())
+		m = m.or(s.a[i].m())
 	}
 	return m
 }
