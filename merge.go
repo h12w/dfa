@@ -6,7 +6,7 @@ import (
 )
 
 type merger struct {
-	m1, m2, m *Machine
+	m1, m2, m *M
 	l         *list.List
 	idm       map[[2]int]int
 	mergeMethod
@@ -16,17 +16,17 @@ type mergeMethod interface {
 	eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int))
 }
 
-func newMerger(m1, m2 *Machine, method mergeMethod) *merger {
+func newMerger(m1, m2 *M, method mergeMethod) *merger {
 	return &merger{
 		m1:          m1,
 		m2:          m2,
-		m:           &Machine{},
+		m:           &M{},
 		l:           list.New(),
 		idm:         make(map[[2]int]int),
 		mergeMethod: method}
 }
 
-func (q *merger) merge() *Machine {
+func (q *merger) merge() *M {
 	if q.m1 == nil {
 		return q.m2.clone()
 	} else if q.m2 == nil {

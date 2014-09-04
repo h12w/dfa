@@ -61,7 +61,7 @@ func quote(b byte) string {
 	return fmt.Sprintf(`%.2x`, b)
 }
 
-func (m *Machine) dump() string {
+func (m *M) dump() string {
 	var w bytes.Buffer
 	w.WriteByte('\n')
 	for i := range m.states {
@@ -70,7 +70,7 @@ func (m *Machine) dump() string {
 	return w.String()
 }
 
-func (m *Machine) SaveSVG(file string, opt ...*GraphOption) error {
+func (m *M) SaveSVG(file string, opt ...*GraphOption) error {
 	dotCmd := exec.Command("dot", "-Tsvg", "-o", file)
 	w, err := dotCmd.StdinPipe()
 	if err != nil {
@@ -92,7 +92,7 @@ func (m *Machine) SaveSVG(file string, opt ...*GraphOption) error {
 	return m.writeDotFormat(w, opt[0])
 }
 
-func (m *Machine) SaveDot(file string, opt ...*GraphOption) error {
+func (m *M) SaveDot(file string, opt ...*GraphOption) error {
 	f, err := os.Create(file)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (m *Machine) SaveDot(file string, opt ...*GraphOption) error {
 
 }
 
-func (m *Machine) writeDotFormat(writer io.Writer, opt *GraphOption) error {
+func (m *M) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 	var w bytes.Buffer
 	w.WriteString("digraph g {\n")
 	if opt.TimeLabel {

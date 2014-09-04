@@ -2,17 +2,17 @@ package dfa
 
 import "unicode/utf8"
 
-func Str(s string) *Machine {
+func Str(s string) *M {
 	bs := []byte(s)
 	ss := make(states, 0, len(bs)+1)
 	for i, b := range bs {
 		ss = append(ss, stateTo(b, i+1))
 	}
 	ss = append(ss, finalState())
-	return &Machine{ss, 0}
+	return &M{ss, 0}
 }
 
-func Between(lo, hi rune) *Machine {
+func Between(lo, hi rune) *M {
 	if lo > hi {
 		lo, hi = hi, lo
 	}
@@ -24,14 +24,14 @@ func Between(lo, hi rune) *Machine {
 	return u.m()
 }
 
-func BetweenByte(s, e byte) *Machine {
-	return &Machine{states{
+func BetweenByte(s, e byte) *M {
+	return &M{states{
 		stateBetween(s, e, 1),
 		finalState(),
 	}, 0}
 }
 
-func Char(s string) (m *Machine) {
+func Char(s string) (m *M) {
 	for _, r := range s {
 		if r == utf8.RuneError {
 			panic("invalid rune")
@@ -41,7 +41,7 @@ func Char(s string) (m *Machine) {
 	return m
 }
 
-func opMany(op func(_, _ *Machine) *Machine, ms []*Machine) *Machine {
+func opMany(op func(_, _ *M) *M, ms []*M) *M {
 	switch len(ms) {
 	case 0:
 		return nil
@@ -55,10 +55,10 @@ func opMany(op func(_, _ *Machine) *Machine, ms []*Machine) *Machine {
 	return m
 }
 
-func Con(ms ...*Machine) *Machine {
+func Con(ms ...*M) *M {
 	return opMany(con2, ms)
 }
-func con2(m1, m2 *Machine) *Machine {
+func con2(m1, m2 *M) *M {
 	m := m1.clone()
 	m2 = m2.clone()
 	m2.shiftID(m.states.count() - 1)
@@ -72,21 +72,21 @@ func con2(m1, m2 *Machine) *Machine {
 	return m
 }
 
-func Or(ms ...*Machine) *Machine {
+func Or(ms ...*M) *M {
 	return opMany(or2, ms)
 }
-func or2(m1, m2 *Machine) *Machine {
+func or2(m1, m2 *M) *M {
 	return newMerger(m1, m2, union{}).merge()
 }
 
-func And(ms ...*Machine) *Machine {
+func And(ms ...*M) *M {
 	return opMany(and2, ms)
 }
-func and2(m1, m2 *Machine) *Machine {
+func and2(m1, m2 *M) *M {
 	return newMerger(m1, m2, intersection{}).merge()
 }
 
-func (m *Machine) ZeroOrMore() *Machine {
+func (m *M) ZeroOrMore() *M {
 	m = m.OneOrMore()
 	if len(m.states) == 2 {
 		m.states = m.states[1:]
@@ -96,11 +96,11 @@ func (m *Machine) ZeroOrMore() *Machine {
 	return m
 }
 
-func ZeroOrMore(ms ...*Machine) *Machine {
+func ZeroOrMore(ms ...*M) *M {
 	return Con(ms...).ZeroOrMore()
 }
 
-func (m *Machine) Loop(filter func(b byte) bool) *Machine {
+func (m *M) Loop(filter func(b byte) bool) *M {
 	m = m.clone()
 	m.eachFinal(func(f *state) {
 		f.filterConnect(m.startState(), filter)
@@ -108,7 +108,7 @@ func (m *Machine) Loop(filter func(b byte) bool) *Machine {
 	return m
 }
 
-func (m *Machine) OneOrMore() *Machine {
+func (m *M) OneOrMore() *M {
 	m = m.clone()
 	m.eachFinal(func(f *state) {
 		f.connect(m.startState())
@@ -116,21 +116,21 @@ func (m *Machine) OneOrMore() *Machine {
 	return m
 }
 
-func OneOrMore(ms ...*Machine) *Machine {
+func OneOrMore(ms ...*M) *M {
 	return Con(ms...).OneOrMore()
 }
 
-func (m *Machine) ZeroOrOne() *Machine {
+func (m *M) ZeroOrOne() *M {
 	m = m.clone()
 	m.states[0].label = defaultFinal
 	return m
 }
 
-func ZeroOrOne(ms ...*Machine) *Machine {
+func ZeroOrOne(ms ...*M) *M {
 	return Con(ms...).ZeroOrOne()
 }
 
-func (m *Machine) Complement() *Machine {
+func (m *M) Complement() *M {
 	m = m.clone()
 	m.each(func(f *state) {
 		if f.final() {
@@ -142,7 +142,7 @@ func (m *Machine) Complement() *Machine {
 	return m
 }
 
-func (m *Machine) Exclude(ms ...*Machine) *Machine {
+func (m *M) Exclude(ms ...*M) *M {
 	ex := Or(ms...)
 	ex.eachFinal(func(s *state) {
 		s.label = 9999 // TODO remove this hack
@@ -150,7 +150,7 @@ func (m *Machine) Exclude(ms ...*Machine) *Machine {
 	return newMerger(m, ex, difference{}).merge().deleteUnreachable()
 }
 
-func (m *Machine) Repeat(n int) *Machine {
+func (m *M) Repeat(n int) *M {
 	mm := m.clone()
 	for i := 0; i < n-1; i++ {
 		mm = con2(mm, m)

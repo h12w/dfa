@@ -10,7 +10,7 @@ type FastS struct {
 	Trans [256]*FastS
 }
 
-func (m *Machine) ToFast() *FastM {
+func (m *M) ToFast() *FastM {
 	fm := &FastM{make([]FastS, len(m.states))}
 	for i := range m.states {
 		fm.States[i] = m.states[i].toFast(fm)

@@ -1,6 +1,6 @@
 package dfa
 
-func (m *Machine) eachUnreachable(visit func(int)) {
+func (m *M) eachUnreachable(visit func(int)) {
 	reachFinal := make([]bool, m.states.count())
 	for i := range m.states {
 		if m.states[i].final() {
@@ -30,7 +30,7 @@ func (m *Machine) eachUnreachable(visit func(int)) {
 	}
 }
 
-func (m *Machine) deleteUnreachable() *Machine {
+func (m *M) deleteUnreachable() *M {
 	m.eachUnreachable(func(i int) {
 		m.states.each(func(s *state) {
 			a := s.table.toTransArray()
@@ -45,7 +45,7 @@ func (m *Machine) deleteUnreachable() *Machine {
 	return m
 }
 
-func (m *Machine) Minimize() *Machine {
+func (m *M) Minimize() *M {
 	n := m.states.count()
 	diff := newDiff(n)
 	diff.eachFalse(func(i, j int) {

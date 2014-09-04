@@ -37,7 +37,7 @@ func TestDotFormat(t *testing.T) {
 	`))
 }
 
-func (m *Machine) dotFormat() string {
+func (m *M) dotFormat() string {
 	var w bytes.Buffer
 	w.WriteByte('\n')
 	m.writeDotFormat(&w, &GraphOption{"Ubuntu Mono", false})

@@ -66,7 +66,7 @@ func (s *u8s) add(lo, hi rune) {
 	s.a = append(s.a, u8{lo, hi})
 }
 
-func (s *u8s) m() (m *Machine) {
+func (s *u8s) m() (m *M) {
 	for i := range s.a {
 		m = or2(m, s.a[i].m())
 	}
@@ -77,10 +77,10 @@ type u8 struct {
 	lo, hi rune
 }
 
-func (u *u8) m() *Machine {
+func (u *u8) m() *M {
 	lo, hi := u.lo, u.hi
 	n := calcN(hi)
-	m := &Machine{make(states, n+1), 0}
+	m := &M{make(states, n+1), 0}
 	m.states[n] = finalState()
 	for i := n - 1; i >= 1; i-- {
 		l, h := byte(lo&maskx), byte(hi&maskx)

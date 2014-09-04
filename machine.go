@@ -1,24 +1,24 @@
 package dfa
 
-type Machine struct {
+type M struct {
 	states
 	start int
 }
 type states []state
 
-func (m *Machine) clone() *Machine {
-	return &Machine{m.states.clone(), m.start}
+func (m *M) clone() *M {
+	return &M{m.states.clone(), m.start}
 }
 
-func (m *Machine) Count() int {
+func (m *M) Count() int {
 	return m.states.count()
 }
 
-func (m *Machine) startState() *state {
+func (m *M) startState() *state {
 	return &m.states[m.start]
 }
 
-func (m *Machine) As(label int) *Machine {
+func (m *M) As(label int) *M {
 	m.states.eachFinal(func(f *state) {
 		f.label = stateLabel(label).toInternal()
 	})
@@ -26,7 +26,7 @@ func (m *Machine) As(label int) *Machine {
 }
 
 // Match greedily matches the DFA against src.
-func (m *Machine) Match(src []byte) (size, label int, matched bool) {
+func (m *M) Match(src []byte) (size, label int, matched bool) {
 	var (
 		s, matchedState *state
 		sid             = 0

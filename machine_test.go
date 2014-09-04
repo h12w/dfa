@@ -9,7 +9,7 @@ import (
 func TestMatch(t *testing.T) {
 	expect := gspec.Expect(t.FailNow)
 	for _, testcase := range []struct {
-		m     *Machine
+		m     *M
 		input string
 		token string
 		label int

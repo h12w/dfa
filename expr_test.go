@@ -26,7 +26,7 @@ const (
 	identLabel
 )
 
-var threeToken = func() *Machine {
+var threeToken = func() *M {
 	decimalDigit := b('0', '9')
 	hexDigit := or(b('0', '9'), b('a', 'f'), b('A', 'F'))
 	letter := or(b('a', 'z'), b('A', 'Z'))
@@ -38,13 +38,13 @@ var threeToken = func() *Machine {
 	return or(hexLit, decimalLit, ident)
 }()
 
-var bsas = func() *Machine {
+var bsas = func() *M {
 	bsa := con(zeroOrMore(s("b")), s("a"))
 	//	fmt.Println(bsa.dump())
 	return zeroOrMore(bsa, bsa)
 }()
 
-var asbs = func() *Machine {
+var asbs = func() *M {
 	asb := con(zeroOrMore(s("a")), s("b"))
 	return zeroOrMore(asb, asb)
 }()
@@ -52,7 +52,7 @@ var asbs = func() *Machine {
 func TestExpr(t *testing.T) {
 	expect := gspec.Expect(t.FailNow)
 	for i, testcase := range []struct {
-		m *Machine
+		m *M
 		s string
 	}{
 		{
