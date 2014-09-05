@@ -56,6 +56,8 @@ func (u *u8s) betweenRune(lo, hi rune) {
 				u.add(hi&^m, hi)
 				hi = (hi &^ m) - 1
 			}
+		} else {
+			break
 		}
 	}
 	if lo <= hi {
