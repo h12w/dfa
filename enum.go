@@ -1,9 +1,7 @@
 package dfa
 
 const (
-	invalidID      = -1
-	trivialFinalID = -2
-	excludingID    = -3
+	invalidID = -1
 )
 
 type stateLabel int

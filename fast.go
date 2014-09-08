@@ -38,25 +38,24 @@ func (s *state) toFast(fm *FastM) (fs FastS) {
 }
 
 // Match greedily matches the DFA against src.
-func (m *FastM) Match(src []byte) (size, label int, matched bool) {
-	var (
-		s   = &m.States[0]
-		pos int
-	)
+func (m *FastM) Match(src []byte, p int) (size, label int, matched bool) {
+	cur := &m.States[0]
+	pos := p
+	matchedPos := pos
 	for {
-		if s.Label >= 0 {
-			size = pos
-			label = s.Label
+		if cur.Label >= 0 {
+			matchedPos = pos
+			label = cur.Label
 			matched = true
 		}
 		if pos == len(src) {
 			break
 		}
-		s = s.Trans[src[pos]]
-		if s == nil {
+		if cur = cur.Trans[src[pos]]; cur == nil {
 			break
 		}
 		pos++
 	}
+	size = matchedPos - p
 	return
 }
