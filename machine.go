@@ -28,34 +28,6 @@ func (m *M) As(label int) *M {
 	return m
 }
 
-// Match greedily matches the DFA against src.
-func (m *M) Match(src []byte) (size, label int, matched bool) {
-	var (
-		s, matchedState *state
-		sid             = 0
-		pos, matchedPos int
-	)
-	for sid >= 0 {
-		s = &m.states[sid]
-		if s.label >= defaultFinal {
-			matchedState = s
-			matchedPos = pos
-		}
-		if pos < len(src) {
-			sid = s.next(src[pos])
-			if sid >= 0 {
-				pos++
-			}
-		} else {
-			break
-		}
-	}
-	if matchedState != nil {
-		return matchedPos, matchedState.label.toExternal(), true
-	}
-	return 0, -1, false
-}
-
 func (ss states) each(visit func(*state)) {
 	for i := range ss {
 		visit(&ss[i])

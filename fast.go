@@ -9,6 +9,8 @@ type FastS struct {
 	Label int
 	Trans [256]*FastS
 }
+type Action struct {
+}
 
 func (m *M) ToFast() *FastM {
 	fm := &FastM{make([]FastS, len(m.states))}
@@ -34,28 +36,5 @@ func (s *state) toFast(fm *FastM) (fs FastS) {
 			b++
 		}
 	}
-	return
-}
-
-// Match greedily matches the DFA against src.
-func (m *FastM) Match(src []byte, p int) (size, label int, matched bool) {
-	cur := &m.States[0]
-	pos := p
-	matchedPos := pos
-	for {
-		if cur.Label >= 0 {
-			matchedPos = pos
-			label = cur.Label
-			matched = true
-		}
-		if pos == len(src) {
-			break
-		}
-		if cur = cur.Trans[src[pos]]; cur == nil {
-			break
-		}
-		pos++
-	}
-	size = matchedPos - p
 	return
 }
