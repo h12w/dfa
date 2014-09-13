@@ -20,6 +20,10 @@ func (m *M) ToFast() *FastM {
 	return fm
 }
 
+func (m *FastM) Count() int {
+	return len(m.States)
+}
+
 func (m *FastM) Size() int {
 	return int(reflect.TypeOf(FastS{}).Size()) * len(m.States)
 }

@@ -278,5 +278,6 @@ func TestExpr(t *testing.T) {
 }
 
 func TestSingle(t *testing.T) {
+	s("a").AtMost(3).SaveSVG("a3.svg")
 	//or(b(0x3bf, 0x3bf), b(0x3c0, 0x3c0)).SaveSVG("classL.svg")
 }

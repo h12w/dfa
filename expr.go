@@ -94,6 +94,15 @@ func (m *M) AtLeast(n int) *M {
 	return Con(ms...)
 }
 
+func (m *M) AtMost(n int) *M {
+	ms := make([]*M, n)
+	ms[0] = m
+	for i := 1; i < len(ms); i++ {
+		ms[i] = ms[i-1].con(m)
+	}
+	return Or(ms...).ZeroOrOne()
+}
+
 func (m *M) loop() *M {
 	m = m.clone()
 	m.eachFinal(func(f *state) {

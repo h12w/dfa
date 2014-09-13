@@ -6,6 +6,10 @@ type M struct {
 }
 type states []state
 
+func (m *M) String() string {
+	return m.dump()
+}
+
 func (m *M) clone() *M {
 	if m == nil {
 		return nil
