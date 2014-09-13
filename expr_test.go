@@ -278,7 +278,5 @@ func TestExpr(t *testing.T) {
 }
 
 func TestSingle(t *testing.T) {
-	//CharClass("L").SaveSVG("classL.svg")
-	b(0x3bf, 0x3c0) //.SaveSVG("classL.svg")
 	//or(b(0x3bf, 0x3bf), b(0x3c0, 0x3c0)).SaveSVG("classL.svg")
 }

@@ -107,7 +107,7 @@ func (m *M) Loop(filters ...func(b byte) bool) *M {
 	m.eachFinal(func(f *state) {
 		f.filterConnect(m.startState(), filters)
 	})
-	return m
+	return m.Minimize()
 }
 func IfNot(bs ...byte) func(byte) bool {
 	return func(input byte) bool {

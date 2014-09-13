@@ -6,6 +6,10 @@ import (
 )
 
 func CharClass(name string) (m *M) {
+	switch name {
+	case "L":
+		return classL
+	}
 	ms := []*M{}
 	eachRangeInCharClass(name, func(lo, hi rune) {
 		ms = append(ms, Between(lo, hi))
