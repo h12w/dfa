@@ -1,5 +1,19 @@
 package dfa
 
+func (m *M) deleteUnreachable() *M {
+	m.eachUnreachable(func(i int) {
+		m.states.each(func(s *state) {
+			a := s.table.toTransArray()
+			for b := range a {
+				if a[b] == i {
+					a[b] = invalidID //excludingID // TODO change this hack
+				}
+			}
+			s.table = a.toTransTable()
+		})
+	})
+	return m
+}
 func (m *M) eachUnreachable(visit func(int)) {
 	reachFinal := make([]bool, m.states.count())
 	for i := range m.states {
@@ -28,21 +42,6 @@ func (m *M) eachUnreachable(visit func(int)) {
 			visit(i)
 		}
 	}
-}
-
-func (m *M) deleteUnreachable() *M {
-	m.eachUnreachable(func(i int) {
-		m.states.each(func(s *state) {
-			a := s.table.toTransArray()
-			for b := range a {
-				if a[b] == i {
-					a[b] = invalidID //excludingID // TODO change this hack
-				}
-			}
-			s.table = a.toTransTable()
-		})
-	})
-	return m
 }
 
 func (m *M) Minimize() *M {

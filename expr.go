@@ -85,6 +85,15 @@ func ZeroOrMore(ms ...*M) *M {
 	return Con(ms...).ZeroOrMore()
 }
 
+func (m *M) AtLeast(n int) *M {
+	ms := make([]*M, n+1)
+	for i := range ms {
+		ms[i] = m
+	}
+	ms[n] = m.ZeroOrMore()
+	return Con(ms...)
+}
+
 func (m *M) loop() *M {
 	m = m.clone()
 	m.eachFinal(func(f *state) {
@@ -138,7 +147,7 @@ func (m *M) Complement() *M {
 			f.label = defaultFinal
 		}
 	})
-	return m
+	return m.deleteUnreachable()
 }
 
 func (m *M) Exclude(ms ...*M) *M {
