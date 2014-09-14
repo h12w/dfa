@@ -8,16 +8,14 @@ import (
 )
 
 var (
-	s          = Str
-	c          = Char
-	b          = Between
-	con        = Con
-	or         = Or
-	and        = And
-	zeroOrMore = ZeroOrMore
-	zeroOrOne  = ZeroOrOne
-	oneOrMore  = OneOrMore
-	graphOpt   = &GraphOption{"Ubuntu Mono", true}
+	s        = Str
+	c        = Char
+	b        = Between
+	con      = Con
+	or       = Or
+	and      = And
+	optional = Optional
+	graphOpt = &GraphOption{"Ubuntu Mono", true}
 )
 
 const (
@@ -31,21 +29,21 @@ var threeToken = func() *M {
 	hexDigit := or(b('0', '9'), b('a', 'f'), b('A', 'F'))
 	letter := or(b('a', 'z'), b('A', 'Z'))
 
-	hexLit := con(s(`0`), c(`xX`), oneOrMore(hexDigit)).As(hexLabel)
-	decimalLit := oneOrMore(decimalDigit).As(decimalLabel)
-	ident := con(letter, zeroOrMore(or(letter, decimalDigit))).As(identLabel)
+	hexLit := con(s(`0`), c(`xX`), hexDigit.AtLeast(1)).As(hexLabel)
+	decimalLit := decimalDigit.AtLeast(1).As(decimalLabel)
+	ident := con(letter, or(letter, decimalDigit).Repeat()).As(identLabel)
 
 	return or(hexLit, decimalLit, ident).Minimize()
 }
 
 var bsas = func() *M {
-	bsa := con(zeroOrMore(s("b")), s("a"))
-	return zeroOrMore(bsa, bsa)
+	bsa := con(s("b").Repeat(), s("a"))
+	return con(bsa, bsa).Repeat()
 }
 
 var asbs = func() *M {
-	asb := con(zeroOrMore(s("a")), s("b"))
-	return zeroOrMore(asb, asb)
+	asb := con(s("a").Repeat(), s("b"))
+	return con(asb, asb).Repeat()
 }
 
 func TestExpr(t *testing.T) {
@@ -91,19 +89,19 @@ func TestExpr(t *testing.T) {
 			c("ab").Minimize().dump(),
 		},
 		{
-			zeroOrMore(s("a")), `
+			s("a").Repeat(), `
 			s0$
 				'a'     s0
 		`},
 		{
-			zeroOrMore(s("ab")), `
+			s("ab").Repeat(), `
 			s0$
 				'a'     s1
 			s1
 				'b'     s0
 		`},
 		{
-			oneOrMore(s("ab")), `
+			s("ab").AtLeast(1), `
 			s0
 				'a'     s1
 			s1
@@ -112,7 +110,7 @@ func TestExpr(t *testing.T) {
 				'a'     s1
 		`},
 		{
-			con(s(`a`), zeroOrOne(s(`b`))), `
+			con(s(`a`), optional(s(`b`))), `
 			s0
 				'a'     s1
 			s1$
@@ -121,7 +119,7 @@ func TestExpr(t *testing.T) {
 			`,
 		},
 		{
-			con(s(`a`), zeroOrMore(s(`b`))), `
+			con(s(`a`), s(`b`).Repeat()), `
 			s0
 				'a'     s1
 			s1$

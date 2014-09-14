@@ -41,7 +41,10 @@ func Char(s string) (m *M) {
 	return m
 }
 
-func Con(ms ...*M) *M {
+func Con(ms ...interface{}) *M {
+	return conMany(toMs(ms))
+}
+func conMany(ms []*M) *M {
 	return opMany((*M).con, ms).Minimize()
 }
 func (m1 *M) con(m2 *M) *M {
@@ -61,37 +64,45 @@ func (m1 *M) con(m2 *M) *M {
 	return m
 }
 
-func Or(ms ...*M) *M {
+func Or(ms ...interface{}) *M {
+	return orMany(toMs(ms))
+}
+func orMany(ms []*M) *M {
 	return opMany((*M).or, ms)
 }
 func (m1 *M) or(m2 *M) *M {
 	return newMerger(m1, m2, union{}).merge()
 }
 
-func And(ms ...*M) *M {
+func And(ms ...interface{}) *M {
+	return andMany(toMs(ms))
+}
+func andMany(ms []*M) *M {
 	return opMany((*M).and, ms)
 }
 func (m1 *M) and(m2 *M) *M {
 	return newMerger(m1, m2, intersection{}).merge()
 }
 
-func (m *M) ZeroOrMore() *M {
+func (m *M) zeroOrMore() *M {
 	m = m.loop()
 	m.startState().label = defaultFinal
 	return m
 }
 
-func ZeroOrMore(ms ...*M) *M {
-	return Con(ms...).ZeroOrMore()
-}
-
 func (m *M) AtLeast(n int) *M {
-	ms := make([]*M, n+1)
+	switch n {
+	case 0:
+		return m.zeroOrMore()
+	case 1:
+		return m.oneOrMore()
+	}
+	ms := make([]*M, n)
 	for i := range ms {
 		ms[i] = m
 	}
-	ms[n] = m.ZeroOrMore()
-	return Con(ms...)
+	ms[n-1] = m.oneOrMore()
+	return conMany(ms)
 }
 
 func (m *M) AtMost(n int) *M {
@@ -100,7 +111,7 @@ func (m *M) AtMost(n int) *M {
 	for i := 1; i < len(ms); i++ {
 		ms[i] = ms[i-1].con(m)
 	}
-	return Or(ms...).ZeroOrOne()
+	return orMany(ms).Optional()
 }
 
 func (m *M) loop() *M {
@@ -129,22 +140,18 @@ func IfNot(bs ...byte) func(byte) bool {
 	}
 }
 
-func (m *M) OneOrMore() *M {
+func (m *M) oneOrMore() *M {
 	return m.loop()
 }
 
-func OneOrMore(ms ...*M) *M {
-	return Con(ms...).OneOrMore()
-}
-
-func (m *M) ZeroOrOne() *M {
+func (m *M) Optional() *M {
 	m = m.clone()
 	m.states[0].label = defaultFinal
 	return m
 }
 
-func ZeroOrOne(ms ...*M) *M {
-	return Con(ms...).ZeroOrOne()
+func Optional(ms ...*M) *M {
+	return conMany(ms).Optional()
 }
 
 func (m *M) Complement() *M {
@@ -159,16 +166,33 @@ func (m *M) Complement() *M {
 	return m.deleteUnreachable()
 }
 
-func (m *M) Exclude(ms ...*M) *M {
+func (m *M) Exclude(ms ...interface{}) *M {
 	return newMerger(m, Or(ms...), difference{}).merge().deleteUnreachable()
 }
 
-func (m *M) Repeat(n int) *M {
-	ms := make([]*M, n)
-	for i := range ms {
-		ms[i] = m
+func (m *M) Repeat(limit ...int) *M {
+	switch len(limit) {
+	case 0:
+		return m.zeroOrMore()
+	case 1:
+		n := limit[0]
+		ms := make([]*M, n)
+		for i := range ms {
+			ms[i] = m
+		}
+		return conMany(ms)
+	case 2:
+		lo, hi := limit[0], limit[1]
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		ms := make([]*M, 0, hi-lo+1)
+		for n := lo; n <= hi; n++ {
+			ms = append(ms, m.Repeat(n))
+		}
+		return orMany(ms)
 	}
-	return Con(ms...)
+	panic("repeat should have zero to two arguments")
 }
 
 func opMany(op func(_, _ *M) *M, ms []*M) *M {
@@ -194,4 +218,19 @@ func opMany(op func(_, _ *M) *M, ms []*M) *M {
 		ms = ms[:cur]
 	}
 	return ms[0]
+}
+
+func toMs(a []interface{}) []*M {
+	ms := make([]*M, len(a))
+	for i := range a {
+		switch o := a[i].(type) {
+		case *M:
+			ms[i] = o
+		case string:
+			ms[i] = Str(o)
+		default:
+			panic("type of argument should be either string or *M")
+		}
+	}
+	return ms
 }

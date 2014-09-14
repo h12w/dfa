@@ -14,7 +14,7 @@ func CharClass(name string) (m *M) {
 	eachRangeInCharClass(name, func(lo, hi rune) {
 		ms = append(ms, Between(lo, hi))
 	})
-	return Or(ms...).Minimize()
+	return orMany(ms).Minimize()
 }
 
 func eachRangeInCharClass(name string, visit func(lo, hi rune)) {
