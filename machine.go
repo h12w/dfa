@@ -1,10 +1,10 @@
 package dfa
 
 type M struct {
-	states
-	start int
+	Start int
+	States
 }
-type states []state
+type States []S
 
 func (m *M) String() string {
 	return m.dump()
@@ -14,31 +14,31 @@ func (m *M) clone() *M {
 	if m == nil {
 		return nil
 	}
-	return &M{m.states.clone(), m.start}
+	return &M{m.Start, m.States.clone()}
 }
 
 func (m *M) Count() int {
-	return m.states.count()
+	return m.States.count()
 }
 
-func (m *M) startState() *state {
-	return &m.states[m.start]
+func (m *M) startState() *S {
+	return &m.States[m.Start]
 }
 
-func (m *M) As(label int) *M {
-	m.states.eachFinal(func(f *state) {
-		f.label = stateLabel(label).toInternal()
+func (m *M) As(Label int) *M {
+	m.States.eachFinal(func(f *S) {
+		f.Label = StateLabel(Label).toInternal()
 	})
 	return m
 }
 
-func (ss states) each(visit func(*state)) {
+func (ss States) each(visit func(*S)) {
 	for i := range ss {
 		visit(&ss[i])
 	}
 }
 
-func (ss states) eachFinal(visit func(*state)) {
+func (ss States) eachFinal(visit func(*S)) {
 	for i := range ss {
 		if ss[i].final() {
 			visit(&ss[i])
@@ -46,29 +46,29 @@ func (ss states) eachFinal(visit func(*state)) {
 	}
 }
 
-func (ss states) count() int {
+func (ss States) count() int {
 	return len(ss)
 }
 
-func (ss states) clone() states {
-	ss = append(states(nil), ss...)
+func (ss States) clone() States {
+	ss = append(States(nil), ss...)
 	for i := range ss {
 		ss[i] = ss[i].clone()
 	}
 	return ss
 }
 
-func (ss states) state(id int) *state {
+func (ss States) S(id int) *S {
 	if id < 0 {
 		return nil
 	}
 	return &ss[id]
 }
 
-func (ss states) shiftID(offset int) {
-	ss.each(func(s *state) {
-		s.each(func(t *trans) {
-			t.next += offset
+func (ss States) shiftID(offset int) {
+	ss.each(func(s *S) {
+		s.each(func(t *Trans) {
+			t.Next += offset
 		})
 	})
 }

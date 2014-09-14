@@ -2,51 +2,49 @@ package dfa
 
 import "fmt"
 
-type state struct {
-	table transTable
-	label stateLabel
+type S struct {
+	Label StateLabel
+	Table TransTable
 }
-type transTable struct {
-	a []trans
-}
-type trans struct {
-	s, e byte
-	next int
+type TransTable []Trans
+type Trans struct {
+	Lo, Hi byte
+	Next   int
 }
 type transArray [256]int
 
-func stateBetween(lo, hi byte, next int) state {
+func stateBetween(lo, hi byte, next int) S {
 	a := newTransArray()
 	a.setBetween(lo, hi, next)
-	return state{table: a.toTransTable()}
+	return S{Table: a.toTransTable()}
 }
 
-func stateTo(b byte, next int) state {
+func stateTo(b byte, next int) S {
 	a := newTransArray()
 	a.set(b, next)
-	return state{table: a.toTransTable()}
+	return S{Table: a.toTransTable()}
 }
 
-func finalState() state {
-	return state{label: defaultFinal}
+func finalState() S {
+	return S{Label: defaultFinal}
 }
 
-func (s *state) final() bool {
-	return s.label.final()
+func (s *S) final() bool {
+	return s.Label.final()
 }
 
-func (s *state) connect(o *state) {
-	a := s.table.toTransArray()
-	o.each(func(t *trans) {
-		a.setBetween(t.s, t.e, t.next)
+func (s *S) connect(o *S) {
+	a := s.Table.toTransArray()
+	o.each(func(t *Trans) {
+		a.setBetween(t.Lo, t.Hi, t.Next)
 	})
-	s.table = a.toTransTable()
+	s.Table = a.toTransTable()
 }
 
-func (s *state) filterConnect(o *state, filters []func(byte) bool) {
-	a := s.table.toTransArray()
-	o.each(func(t *trans) {
-		b := t.s
+func (s *S) filterConnect(o *S, filters []func(byte) bool) {
+	a := s.Table.toTransArray()
+	o.each(func(t *Trans) {
+		b := t.Lo
 		for {
 			connect := true
 			for _, filter := range filters {
@@ -56,47 +54,47 @@ func (s *state) filterConnect(o *state, filters []func(byte) bool) {
 				}
 			}
 			if connect {
-				a.set(b, t.next)
+				a.set(b, t.Next)
 			}
-			if b == t.e {
+			if b == t.Hi {
 				break
 			}
 			b++
 		}
 	})
-	s.table = a.toTransTable()
+	s.Table = a.toTransTable()
 }
 
-func (s *state) clone() state {
-	return state{s.table.clone(), s.label}
+func (s *S) clone() S {
+	return S{s.Label, s.Table.clone()}
 }
 
-func (s *state) iter() tableIter {
+func (s *S) iter() TableIter {
 	if s == nil {
-		return tableIter{
+		return TableIter{
 			n: invalidID,
 		}
 	}
-	return s.table.iter()
+	return s.Table.iter()
 }
 
-type tableIter struct {
-	t *transTable
+type TableIter struct {
+	t *TransTable
 	i int
 	b byte
 	n int
 }
 
-func (it *tableIter) next() (rb byte, rnext int) {
+func (it *TableIter) next() (rb byte, rnext int) {
 	if it.n == invalidID {
 		return 0, invalidID
 	}
 	rb, rnext = it.b, it.n
-	if it.b == it.t.a[it.i].e {
+	if it.b == (*it.t)[it.i].Hi {
 		it.i++
-		if it.i < len(it.t.a) {
-			it.b = it.t.a[it.i].s
-			it.n = it.t.a[it.i].next
+		if it.i < len(*it.t) {
+			it.b = (*it.t)[it.i].Lo
+			it.n = (*it.t)[it.i].Next
 		} else {
 			it.n = invalidID
 		}
@@ -106,40 +104,40 @@ func (it *tableIter) next() (rb byte, rnext int) {
 	return
 }
 
-func (t *transTable) iter() tableIter {
-	if len(t.a) == 0 {
-		return tableIter{
+func (t *TransTable) iter() TableIter {
+	if len(*t) == 0 {
+		return TableIter{
 			n: invalidID,
 		}
 	}
-	return tableIter{
+	return TableIter{
 		t: t,
-		b: t.a[0].s,
-		n: t.a[0].next,
+		b: (*t)[0].Lo,
+		n: (*t)[0].Next,
 	}
 }
 
-func (s *state) each(visit func(*trans)) {
-	s.table.each(visit)
+func (s *S) each(visit func(*Trans)) {
+	s.Table.each(visit)
 }
 
-func (s *state) seqNext(b byte) (sid int) {
-	for i := range s.table.a {
-		if s.table.a[i].s <= b && b <= s.table.a[i].e {
-			return s.table.a[i].next
+func (s *S) seqNext(b byte) (sid int) {
+	for i := range s.Table {
+		if s.Table[i].Lo <= b && b <= s.Table[i].Hi {
+			return s.Table[i].Next
 		}
 	}
 	return invalidID
 }
 
-func (s *state) next(b byte) (sid int) {
-	min, max := 0, len(s.table.a)-1
+func (s *S) next(b byte) (sid int) {
+	min, max := 0, len(s.Table)-1
 	for min <= max {
 		mid := (min + max) / 2
-		if b < s.table.a[mid].s {
+		if b < s.Table[mid].Lo {
 			max = mid - 1
-		} else if s.table.a[mid].s <= b && b <= s.table.a[mid].e {
-			return s.table.a[mid].next
+		} else if s.Table[mid].Lo <= b && b <= s.Table[mid].Hi {
+			return s.Table[mid].Next
 		} else {
 			min = mid + 1
 		}
@@ -147,21 +145,21 @@ func (s *state) next(b byte) (sid int) {
 	return invalidID
 }
 
-func (table *transTable) each(visit func(*trans)) {
-	for i := range table.a {
-		visit(&table.a[i])
+func (Table *TransTable) each(visit func(*Trans)) {
+	for i := range *Table {
+		visit(&(*Table)[i])
 	}
 }
 
-func (table *transTable) clone() transTable {
-	return transTable{append([]trans(nil), table.a...)}
+func (Table *TransTable) clone() TransTable {
+	return append(TransTable(nil), *Table...)
 }
 
-func (table *transTable) toTransArray() transArray {
+func (Table *TransTable) toTransArray() transArray {
 	a := newTransArray()
-	table.each(func(t *trans) {
-		for i := int(t.s); i <= int(t.e); i++ {
-			a[i] = t.next
+	Table.each(func(t *Trans) {
+		for i := int(t.Lo); i <= int(t.Hi); i++ {
+			a[i] = t.Next
 		}
 	})
 	return a
@@ -180,7 +178,7 @@ func (a *transArray) set(b byte, next int) *transArray {
 		return a
 	}
 	if a[b] != next {
-		panic(fmt.Errorf("byte %s has already been assigned a different state %d", quote(b), next))
+		panic(fmt.Errorf("byte %s has already been assigned a different S %d", quote(b), next))
 	}
 	return a
 }
@@ -198,7 +196,7 @@ func (a *transArray) setBetween(lo, hi byte, next int) *transArray {
 	return a
 }
 
-func (a *transArray) toTransTable() (table transTable) {
+func (a *transArray) toTransTable() (Table TransTable) {
 	i := 0
 	for ; i < len(a); i++ {
 		if a[i] >= 0 {
@@ -208,22 +206,22 @@ func (a *transArray) toTransTable() (table transTable) {
 	if i == 256 {
 		return
 	}
-	table.a = append(table.a, trans{byte(i), byte(i), a[i]})
+	Table = append(Table, Trans{byte(i), byte(i), a[i]})
 	i++
 	for ; i < len(a); i++ {
 		if a[i] >= 0 {
 			b := byte(i)
-			last := table.a[len(table.a)-1]
-			if b == last.e+1 && a[i] == last.next {
-				table.a[len(table.a)-1].e = b
+			last := Table[len(Table)-1]
+			if b == last.Hi+1 && a[i] == last.Next {
+				Table[len(Table)-1].Hi = b
 			} else {
-				table.a = append(table.a, trans{b, b, a[i]})
+				Table = append(Table, Trans{b, b, a[i]})
 			}
 		}
 	}
 	return
 }
 
-func (a *transArray) toState() state {
-	return state{table: a.toTransTable()}
+func (a *transArray) toState() S {
+	return S{Table: a.toTransTable()}
 }

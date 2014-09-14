@@ -4,27 +4,27 @@ const (
 	invalidID = -1
 )
 
-type stateLabel int
+type StateLabel int
 
 const (
-	notFinal          stateLabel = 0
-	defaultFinal      stateLabel = 1
-	labeledFinalStart stateLabel = 2
+	notFinal          StateLabel = 0
+	defaultFinal      StateLabel = 1
+	labeledFinalStart StateLabel = 2
 )
 
-func (l stateLabel) final() bool {
+func (l StateLabel) final() bool {
 	return l >= defaultFinal
 }
 
-func (l stateLabel) labeled() bool {
+func (l StateLabel) labeled() bool {
 	return l >= labeledFinalStart
 }
 
-func (l stateLabel) toInternal() stateLabel {
+func (l StateLabel) toInternal() StateLabel {
 	return l + labeledFinalStart
 }
 
-func (l stateLabel) toExternal() int {
+func (l StateLabel) toExternal() int {
 	if l >= labeledFinalStart {
 		return int(l - labeledFinalStart)
 	}

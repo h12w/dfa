@@ -2,22 +2,22 @@ package dfa
 
 func (m *M) deleteUnreachable() *M {
 	m.eachUnreachable(func(i int) {
-		m.states.each(func(s *state) {
-			a := s.table.toTransArray()
+		m.States.each(func(s *S) {
+			a := s.Table.toTransArray()
 			for b := range a {
 				if a[b] == i {
 					a[b] = invalidID //excludingID // TODO change this hack
 				}
 			}
-			s.table = a.toTransTable()
+			s.Table = a.toTransTable()
 		})
 	})
 	return m
 }
 func (m *M) eachUnreachable(visit func(int)) {
-	reachFinal := make([]bool, m.states.count())
-	for i := range m.states {
-		if m.states[i].final() {
+	reachFinal := make([]bool, m.States.count())
+	for i := range m.States {
+		if m.States[i].final() {
 			reachFinal[i] = true
 		}
 	}
@@ -26,8 +26,8 @@ func (m *M) eachUnreachable(visit func(int)) {
 		more = false
 		for i := range reachFinal {
 			if !reachFinal[i] {
-				for j := range m.states[i].table.a {
-					next := m.states[i].table.a[j].next
+				for j := range m.States[i].Table {
+					next := m.States[i].Table[j].Next
 					if next >= 0 && reachFinal[next] {
 						reachFinal[i] = true
 						more = true
@@ -48,18 +48,18 @@ func (m *M) Minimize() *M {
 	if m == nil {
 		return nil
 	}
-	n := m.states.count()
+	n := m.States.count()
 	diff := newDiff(n)
 	diff.eachFalse(func(i, j int) {
-		s, t := m.states[i], m.states[j]
-		if s.label != t.label || !s.table.positionEqual(&t.table) {
+		s, t := m.States[i], m.States[j]
+		if s.Label != t.Label || !s.Table.positionEqual(&t.Table) {
 			diff.set(i, j)
 		}
 	})
 	for diff.hasNewDiff {
 		diff.hasNewDiff = false
 		diff.eachFalse(func(i, j int) {
-			s, t := m.states[i], m.states[j]
+			s, t := m.States[i], m.States[j]
 			si, ti := s.iter(), t.iter()
 			_, sid := si.next()
 			_, tid := ti.next()
@@ -78,10 +78,10 @@ func (m *M) Minimize() *M {
 		idm[j] = i
 	})
 	if len(idm) > 0 {
-		m.each(func(s *state) {
-			s.each(func(t *trans) {
-				if small, ok := idm[t.next]; ok {
-					t.next = small
+		m.each(func(s *S) {
+			s.each(func(t *Trans) {
+				if small, ok := idm[t.Next]; ok {
+					t.Next = small
 				}
 			})
 		})
@@ -89,7 +89,7 @@ func (m *M) Minimize() *M {
 	return m.or(m) // m.or(m) is also a way to remove unreachable nodes
 }
 
-func (t *transTable) positionEqual(o *transTable) bool {
+func (t *TransTable) positionEqual(o *TransTable) bool {
 	ti, oi := t.iter(), o.iter()
 	for {
 		tb, tnext := ti.next()

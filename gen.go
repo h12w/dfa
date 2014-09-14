@@ -15,12 +15,12 @@ func (m *M) SaveGo(file, pac string) error {
 	fmt.Fprint(f, `package `)
 	fmt.Fprint(f, pac)
 	fmt.Fprintln(f, "")
-	fmt.Fprintln(f, `func match(src []byte, pos int) (size, label int, matched bool) {`)
+	fmt.Fprintln(f, `func match(src []byte, pos int) (size, Label int, matched bool) {`)
 	fmt.Fprintln(f, `start := pos`)
 	fmt.Fprintln(f, `p := pos`)
 	fmt.Fprintln(f, `matchedPos := pos`)
 	fmt.Fprintln(f, `goto s0`)
-	for i, s := range m.states {
+	for i, s := range m.States {
 		s.writeGo(f, i)
 	}
 	fmt.Fprintln(f, `sEnd:`)
@@ -30,29 +30,29 @@ func (m *M) SaveGo(file, pac string) error {
 	return nil
 }
 
-func (s *state) writeGo(w io.Writer, id int) {
+func (s *S) writeGo(w io.Writer, id int) {
 	fmt.Fprintf(w, "s%d:\n", id)
-	if s.label >= labeledFinalStart {
+	if s.Label >= labeledFinalStart {
 		fmt.Fprintln(w, `matched = true`)
 		fmt.Fprintln(w, `matchedPos = pos`)
-		fmt.Fprintf(w, "label = %d\n", s.label.toExternal())
+		fmt.Fprintf(w, "Label = %d\n", s.Label.toExternal())
 	}
 	fmt.Fprintln(w, `if pos == len(src) {`)
 	fmt.Fprintln(w, `goto sEnd`)
 	fmt.Fprintln(w, `}`)
 	fmt.Fprintln(w, `p = pos`)
 	fmt.Fprintln(w, `pos++`)
-	s.table.writeGo(w)
+	s.Table.writeGo(w)
 	fmt.Fprintln(w, `goto sEnd`)
 }
 
-func (t *transTable) writeGo(w io.Writer) {
+func (t *TransTable) writeGo(w io.Writer) {
 	m := make(map[int][]byte)
-	for _, trans := range t.a {
-		b := trans.s
+	for _, Trans := range *t {
+		b := Trans.Lo
 		for {
-			m[trans.next] = append(m[trans.next], b)
-			if b == trans.e {
+			m[Trans.Next] = append(m[Trans.Next], b)
+			if b == Trans.Hi {
 				break
 			}
 			b++
@@ -74,17 +74,17 @@ func (t *transTable) writeGo(w io.Writer) {
 	fmt.Fprintln(w, `}`)
 
 	//	fmt.Fprintln(w, `switch src[p] {`)
-	//	for _, trans := range t.a {
-	//		trans.writeGo(w)
+	//	for _, Trans := range *t {
+	//		Trans.writeGo(w)
 	//	}
 	//	fmt.Fprintln(w, `}`)
 }
 
-func (t *trans) writeGo(w io.Writer) {
-	b := t.s
+func (t *Trans) writeGo(w io.Writer) {
+	b := t.Lo
 	fmt.Fprintf(w, "case ")
 	for {
-		if b == t.e {
+		if b == t.Hi {
 			fmt.Fprintf(w, "0x%.2x", b)
 			break
 		} else {
@@ -93,5 +93,5 @@ func (t *trans) writeGo(w io.Writer) {
 		b++
 	}
 	fmt.Fprintln(w, ":")
-	fmt.Fprintf(w, "goto s%d\n", t.next)
+	fmt.Fprintf(w, "goto s%d\n", t.Next)
 }

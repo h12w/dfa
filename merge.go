@@ -12,8 +12,8 @@ type merger struct {
 	mergeMethod
 }
 type mergeMethod interface {
-	mergeLabel(s1, s2 *state) stateLabel
-	eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int))
+	mergeLabel(s1, s2 *S) StateLabel
+	eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int))
 }
 
 func newMerger(m1, m2 *M, method mergeMethod) *merger {
@@ -32,24 +32,24 @@ func (q *merger) merge() *M {
 	} else if q.m2 == nil {
 		return q.m1.clone()
 	}
-	q.getID(q.m1.start, q.m2.start)
+	q.getID(q.m1.Start, q.m2.Start)
 	for q.l.Len() > 0 {
 		id, id1, id2 := q.get()
-		q.m.states[id] = q.mergeState(q.m1.state(id1), q.m2.state(id2))
+		q.m.States[id] = q.mergeState(q.m1.S(id1), q.m2.S(id2))
 	}
 	return q.m
 }
 
-func (q *merger) mergeState(s1, s2 *state) state {
+func (q *merger) mergeState(s1, s2 *S) S {
 	a := newTransArray()
 	q.eachEdge(s1, s2, func(b byte, id1, id2 int) {
 		a[b] = q.getID(id1, id2)
 	})
-	return state{a.toTransTable(), q.mergeLabel(s1, s2)}
+	return S{q.mergeLabel(s1, s2), a.toTransTable()}
 }
 
-func (s *state) trivialFinal() bool {
-	return s.label == defaultFinal && len(s.table.a) == 0
+func (s *S) trivialFinal() bool {
+	return s.Label == defaultFinal && len(s.Table) == 0
 }
 
 func (q *merger) getID(id1, id2 int) int {
@@ -57,9 +57,9 @@ func (q *merger) getID(id1, id2 int) int {
 	if id, ok := q.idm[key]; ok {
 		return id
 	}
-	id := len(q.m.states)
+	id := len(q.m.States)
 	q.idm[key] = id
-	q.m.states = append(q.m.states, state{})
+	q.m.States = append(q.m.States, S{})
 	q.put(id, id1, id2)
 	return id
 }
@@ -75,15 +75,15 @@ func (q *merger) get() (id, id1, id2 int) {
 
 type intersection struct{}
 
-func (intersection) mergeLabel(s1, s2 *state) stateLabel {
-	l1, l2 := s1.label, s2.label
+func (intersection) mergeLabel(s1, s2 *S) StateLabel {
+	l1, l2 := s1.Label, s2.Label
 	if l1 == l2 {
 		return l1
 	}
 	return notFinal
 }
 
-func (intersection) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
+func (intersection) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
 	b1, id1 := it1.next()
 	b2, id2 := it2.next()
@@ -102,27 +102,27 @@ func (intersection) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 
 type union struct{}
 
-func (union) mergeLabel(s1, s2 *state) stateLabel {
+func (union) mergeLabel(s1, s2 *S) StateLabel {
 	if s1 == nil {
-		return s2.label
+		return s2.Label
 	}
 	if s2 == nil {
-		return s1.label
+		return s1.Label
 	}
-	f1, f2 := s1.label, s2.label
+	f1, f2 := s1.Label, s2.Label
 	if f1 > defaultFinal && f2 > defaultFinal && f1 != f2 {
-		panic(fmt.Errorf("conflict label: %d & %d", f1.toExternal(), f2.toExternal()))
+		panic(fmt.Errorf("conflict Label: %d & %d", f1.toExternal(), f2.toExternal()))
 	}
 	return finalMax(f1, f2)
 }
-func finalMax(a, b stateLabel) stateLabel {
+func finalMax(a, b StateLabel) StateLabel {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func (union) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
+func (union) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
 	b1, next1 := it1.next()
 	b2, next2 := it2.next()
@@ -156,21 +156,21 @@ func (union) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
 
 type difference struct{}
 
-func (difference) mergeLabel(s1, s2 *state) stateLabel {
+func (difference) mergeLabel(s1, s2 *S) StateLabel {
 	if s1 == nil {
 		return notFinal
 	}
 	if s2 == nil {
-		return s1.label
+		return s1.Label
 	}
-	f1, f2 := s1.label, s2.label
+	f1, f2 := s1.Label, s2.Label
 	if f2.final() {
 		return notFinal
 	}
 	return f1
 }
 
-func (difference) eachEdge(s1, s2 *state, visit func(b byte, id1, id2 int)) {
+func (difference) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
 	b1, next1 := it1.next()
 	b2, next2 := it2.next()

@@ -15,40 +15,40 @@ import (
 
 type GraphOption struct {
 	FontName  string
-	TimeLabel bool
+	Timelabel bool
 }
 
-func (s *state) dump(ss []state, sid int) string {
+func (s *S) dump(ss []S, sid int) string {
 	var w bytes.Buffer
 	w.WriteByte('s')
 	w.WriteString(strconv.Itoa(sid))
 	if s.final() {
 		w.WriteByte('$')
-		if s.label > defaultFinal {
-			w.WriteString(strconv.Itoa(int(s.label)))
+		if s.Label > defaultFinal {
+			w.WriteString(strconv.Itoa(int(s.Label)))
 		}
 	}
-	for _, trans := range s.table.a {
+	for _, Trans := range s.Table {
 		w.WriteByte('\n')
 		w.WriteString("\t")
-		w.WriteString(trans.dump())
+		w.WriteString(Trans.dump())
 	}
 	w.WriteByte('\n')
 	return w.String()
 }
 
-func (t *trans) dump() string {
+func (t *Trans) dump() string {
 	var w bytes.Buffer
 	fmt.Fprintf(&w, "%-7s", t.rangeString())
 	w.WriteString(" s")
-	w.WriteString(strconv.Itoa(t.next))
+	w.WriteString(strconv.Itoa(t.Next))
 	return w.String()
 }
-func (t *trans) rangeString() string {
-	if t.s == t.e {
-		return quote(t.s)
+func (t *Trans) rangeString() string {
+	if t.Lo == t.Hi {
+		return quote(t.Lo)
 	}
-	return quote(t.s) + "-" + quote(t.e)
+	return quote(t.Lo) + "-" + quote(t.Hi)
 }
 func quote(b byte) string {
 	switch b {
@@ -64,8 +64,8 @@ func quote(b byte) string {
 func (m *M) dump() string {
 	var w bytes.Buffer
 	w.WriteByte('\n')
-	for i := range m.states {
-		w.WriteString(m.states[i].dump(m.states, i))
+	for i := range m.States {
+		w.WriteString(m.States[i].dump(m.States, i))
 	}
 	return w.String()
 }
@@ -108,7 +108,7 @@ func (m *M) SaveDot(file string, opt ...*GraphOption) error {
 func (m *M) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 	var w bytes.Buffer
 	w.WriteString("digraph g {\n")
-	if opt.TimeLabel {
+	if opt.Timelabel {
 		fmt.Fprintf(&w, "graph [label=\"(%s)\", labeljust=right, fontsize=12];", time.Now().Format("2006-01-02 15:04:05"))
 	}
 	w.WriteString("\trankdir=LR;\n")
@@ -121,9 +121,9 @@ func (m *M) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 	w.WriteString("\tedge [arrowhead=lnormal];\n")
 	w.WriteString("\tENTRY [shape=point, fixedsize=false, width=\".05\"];\n")
 	w.WriteString("\tENTRY -> 0 [label=\"(input)\"];\n")
-	if len(m.states) > 0 {
-		for i := range m.states {
-			s := &m.states[i]
+	if len(m.States) > 0 {
+		for i := range m.States {
+			s := &m.States[i]
 			s.writeDotFormat(&w, i)
 		}
 	}
@@ -132,29 +132,29 @@ func (m *M) writeDotFormat(writer io.Writer, opt *GraphOption) error {
 	_, err := w.WriteTo(writer)
 	return err
 }
-func (s *state) writeDotFormat(w io.Writer, sid int) {
+func (s *S) writeDotFormat(w io.Writer, sid int) {
 	if s.final() {
 		label := ""
-		if s.label > defaultFinal {
-			label = "L" + strconv.Itoa(int(s.label.toExternal()))
+		if s.Label > defaultFinal {
+			label = "L" + strconv.Itoa(int(s.Label.toExternal()))
 		}
 		fmt.Fprintf(w, "\t%d [shape=doublecircle, width=\".18\", xlabel=\"%s\"];\n", sid, label)
 	}
 	m := make(map[int]bool)
-	for _, trans := range s.table.a {
-		if !m[trans.next] {
-			fmt.Fprintf(w, "\t%d -> %d [label=\"%s\"];\n", sid, trans.next, dotEscape(s.table.description(trans.next)))
-			m[trans.next] = true
+	for _, Trans := range s.Table {
+		if !m[Trans.Next] {
+			fmt.Fprintf(w, "\t%d -> %d [label=\"%s\"];\n", sid, Trans.Next, dotEscape(s.Table.description(Trans.Next)))
+			m[Trans.Next] = true
 		}
 	}
 }
-func (table transTable) description(sid int) (l string) {
-	for _, trans := range table.a {
-		if trans.next == sid {
+func (Table TransTable) description(sid int) (l string) {
+	for _, Trans := range Table {
+		if Trans.Next == sid {
 			if l != "" {
 				l += `\n`
 			}
-			l += trans.rangeString()
+			l += Trans.rangeString()
 		}
 	}
 	return

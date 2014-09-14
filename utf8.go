@@ -83,15 +83,15 @@ type u8 struct {
 func (u *u8) m() *M {
 	lo, hi := u.lo, u.hi
 	n := calcN(hi)
-	m := &M{make(states, n+1), 0}
-	m.states[n] = finalState()
+	m := &M{0, make(States, n+1)}
+	m.States[n] = finalState()
 	for i := n - 1; i >= 1; i-- {
 		l, h := byte(lo&maskx), byte(hi&maskx)
-		m.states[i] = stateBetween(l|leadx, h|leadx, i+1)
+		m.States[i] = stateBetween(l|leadx, h|leadx, i+1)
 		lo >>= 6
 		hi >>= 6
 	}
-	m.states[0] = stateBetween(byte(lo)|lead[n-1], byte(hi)|lead[n-1], 1)
+	m.States[0] = stateBetween(byte(lo)|lead[n-1], byte(hi)|lead[n-1], 1)
 	return m
 }
 func calcN(hi rune) int {

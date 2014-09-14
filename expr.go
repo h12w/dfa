@@ -4,12 +4,12 @@ import "unicode/utf8"
 
 func Str(s string) *M {
 	bs := []byte(s)
-	ss := make(states, 0, len(bs)+1)
+	ss := make(States, 0, len(bs)+1)
 	for i, b := range bs {
 		ss = append(ss, stateTo(b, i+1))
 	}
 	ss = append(ss, finalState())
-	return &M{ss, 0}
+	return &M{0, ss}
 }
 
 func Between(lo, hi rune) *M {
@@ -25,10 +25,10 @@ func Between(lo, hi rune) *M {
 }
 
 func BetweenByte(s, e byte) *M {
-	return &M{states{
+	return &M{0, States{
 		stateBetween(s, e, 1),
 		finalState(),
-	}, 0}
+	}}
 }
 
 func Char(s string) (m *M) {
@@ -53,14 +53,14 @@ func (m1 *M) con(m2 *M) *M {
 		return m
 	}
 	m2 = m2.clone()
-	m2.shiftID(m.states.count() - 1)
-	m.eachFinal(func(f *state) {
+	m2.shiftID(m.States.count() - 1)
+	m.eachFinal(func(f *S) {
 		f.connect(m2.startState())
 		if !m2.startState().final() {
-			f.label = notFinal
+			f.Label = notFinal
 		}
 	})
-	m.states = append(m.states, m2.states[1:]...)
+	m.States = append(m.States, m2.States[1:]...)
 	return m
 }
 
@@ -86,7 +86,7 @@ func (m1 *M) and(m2 *M) *M {
 
 func (m *M) zeroOrMore() *M {
 	m = m.loop()
-	m.startState().label = defaultFinal
+	m.startState().Label = defaultFinal
 	return m
 }
 
@@ -116,7 +116,7 @@ func (m *M) AtMost(n int) *M {
 
 func (m *M) loop() *M {
 	m = m.clone()
-	m.eachFinal(func(f *state) {
+	m.eachFinal(func(f *S) {
 		f.connect(m.startState())
 	})
 	return m
@@ -124,7 +124,7 @@ func (m *M) loop() *M {
 
 func (m *M) Loop(filters ...func(b byte) bool) *M {
 	m = m.clone()
-	m.eachFinal(func(f *state) {
+	m.eachFinal(func(f *S) {
 		f.filterConnect(m.startState(), filters)
 	})
 	return m.Minimize()
@@ -146,7 +146,7 @@ func (m *M) oneOrMore() *M {
 
 func (m *M) Optional() *M {
 	m = m.clone()
-	m.states[0].label = defaultFinal
+	m.States[0].Label = defaultFinal
 	return m
 }
 
@@ -156,11 +156,11 @@ func Optional(ms ...*M) *M {
 
 func (m *M) Complement() *M {
 	m = m.clone()
-	m.each(func(f *state) {
+	m.each(func(f *S) {
 		if f.final() {
-			f.label = notFinal
+			f.Label = notFinal
 		} else {
-			f.label = defaultFinal
+			f.Label = defaultFinal
 		}
 	})
 	return m.deleteUnreachable()
