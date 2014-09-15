@@ -52,9 +52,9 @@ func (q *merger) merge() (m *M, err error) {
 }
 
 func (q *merger) mergeState(s1, s2 *S) (S, error) {
-	a := newTransArray()
+	var a transArray
 	q.eachEdge(s1, s2, func(b byte, id1, id2 int) {
-		a[b] = q.getID(id1, id2)
+		a.set(b, q.getID(id1, id2))
 	})
 	label, err := q.mergeLabel(s1, s2)
 	return S{label, a.toTransTable()}, err

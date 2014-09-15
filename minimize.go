@@ -7,8 +7,8 @@ func (m *M) deleteUnreachable() *M {
 			m.States.each(func(s *S) {
 				a := s.Table.toTransArray()
 				for b := range a {
-					if a[b] == i {
-						a[b] = invalidID
+					if a.get(byte(b)) == i {
+						a.clear(byte(b))
 					}
 				}
 				s.Table = a.toTransTable()

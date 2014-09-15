@@ -14,13 +14,13 @@ type Trans struct {
 type transArray [256]int
 
 func stateBetween(lo, hi byte, next int) S {
-	a := newTransArray()
+	var a transArray
 	a.setBetween(lo, hi, next) // there is nothing to conflict with
 	return S{Table: a.toTransTable()}
 }
 
 func stateTo(b byte, next int) S {
-	a := newTransArray()
+	var a transArray
 	a.set(b, next) // there is nothing to conflict with
 	return S{Table: a.toTransTable()}
 }
@@ -164,28 +164,29 @@ func (Table *TransTable) clone() TransTable {
 }
 
 func (Table *TransTable) toTransArray() transArray {
-	a := newTransArray()
+	var a transArray
 	Table.each(func(t *Trans) {
 		for i := int(t.Lo); i <= int(t.Hi); i++ {
-			a[i] = t.Next
+			a.set(byte(i), t.Next)
 		}
 	})
 	return a
 }
 
-func newTransArray() (a transArray) {
-	for i := range a {
-		a[i] = invalidID
-	}
-	return a
+func (a *transArray) clear(b byte) {
+	a[b] = 0
+}
+
+func (a *transArray) get(b byte) int {
+	return a[b] - 1
 }
 
 func (a *transArray) set(b byte, next int) error {
-	if a[b] < 0 {
-		a[b] = next
+	if a[b] <= 0 {
+		a[b] = next + 1
 		return nil
 	}
-	if a[b] != next {
+	if a[b] != next+1 {
 		return fmt.Errorf("byte %s has already been assigned a different state %d", quote(b), next)
 	}
 	return nil
@@ -209,26 +210,28 @@ func (a *transArray) setBetween(lo, hi byte, next int) error {
 func (a *transArray) toTransTable() (Table TransTable) {
 	i := 0
 	for ; i < len(a); i++ {
-		if a[i] >= 0 {
+		if a[i] > 0 {
 			break
 		}
 	}
 	if i == 256 {
 		return
 	}
-	Table = append(Table, Trans{byte(i), byte(i), a[i]})
+	Table = make(TransTable, 0, 32)
+	Table = append(Table, Trans{byte(i), byte(i), a[i] - 1})
 	i++
 	for ; i < len(a); i++ {
-		if a[i] >= 0 {
+		if a[i] > 0 {
 			b := byte(i)
 			last := Table[len(Table)-1]
-			if b == last.Hi+1 && a[i] == last.Next {
+			if b == last.Hi+1 && a[i]-1 == last.Next {
 				Table[len(Table)-1].Hi = b
 			} else {
-				Table = append(Table, Trans{b, b, a[i]})
+				Table = append(Table, Trans{b, b, a[i] - 1})
 			}
 		}
 	}
+	Table = Table[:len(Table):len(Table)]
 	return
 }
 
