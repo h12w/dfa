@@ -1,20 +1,23 @@
 package dfa
 
 func (m *M) deleteUnreachable() *M {
-	m.eachUnreachable(func(i int) {
-		m.States.each(func(s *S) {
-			a := s.Table.toTransArray()
-			for b := range a {
-				if a[b] == i {
-					a[b] = invalidID //excludingID // TODO change this hack
+	reachable := m.reachable()
+	for i := range reachable {
+		if !reachable[i] {
+			m.States.each(func(s *S) {
+				a := s.Table.toTransArray()
+				for b := range a {
+					if a[b] == i {
+						a[b] = invalidID
+					}
 				}
-			}
-			s.Table = a.toTransTable()
-		})
-	})
+				s.Table = a.toTransTable()
+			})
+		}
+	}
 	return m
 }
-func (m *M) eachUnreachable(visit func(int)) {
+func (m *M) reachable() []bool {
 	reachFinal := make([]bool, m.States.count())
 	for i := range m.States {
 		if m.States[i].final() {
@@ -37,11 +40,7 @@ func (m *M) eachUnreachable(visit func(int)) {
 			}
 		}
 	}
-	for i, r := range reachFinal {
-		if !r {
-			visit(i)
-		}
-	}
+	return reachFinal
 }
 
 func (m *M) minimize() (*M, error) {
@@ -59,17 +58,13 @@ func (m *M) minimize() (*M, error) {
 	for diff.hasNewDiff {
 		diff.hasNewDiff = false
 		diff.eachFalse(func(i, j int) {
-			s, t := m.States[i], m.States[j]
-			si, ti := s.iter(), t.iter()
-			_, sid := si.next()
-			_, tid := ti.next()
-			for sid != -1 && tid != -1 {
-				if sid != tid && diff.get(sid, tid) {
+			s, t := m.States[i].Table, m.States[j].Table
+			for k := range s {
+				sNext, tNext := s[k].Next, t[k].Next
+				if sNext != tNext && diff.get(sNext, tNext) {
 					diff.set(i, j)
 					break
 				}
-				_, sid = si.next()
-				_, tid = ti.next()
 			}
 		})
 	}
@@ -86,18 +81,16 @@ func (m *M) minimize() (*M, error) {
 			})
 		})
 	}
-	return m.or(m) // m.or(m) is also a way to remove unreachable nodes
+	return m.and(m) // m.and(m) is also a way to remove unreachable nodes
 }
 
 func (t *TransTable) positionEqual(o *TransTable) bool {
-	ti, oi := t.iter(), o.iter()
-	for {
-		tb, tnext := ti.next()
-		ob, onext := oi.next()
-		if tnext < 0 || onext < 0 {
-			return tnext == onext
-		}
-		if tb != ob {
+	if len(*t) != len(*o) {
+		return false
+	}
+	for i := range *t {
+		tt, oo := (*t)[i], (*o)[i]
+		if tt.Lo != oo.Lo || tt.Hi != oo.Hi {
 			return false
 		}
 	}

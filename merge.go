@@ -8,7 +8,8 @@ import (
 type merger struct {
 	m1, m2, m *M
 	l         *list.List
-	idm       map[[2]int]int
+	idm       []int
+	idmCount  int
 	mergeMethod
 }
 type mergeMethod interface {
@@ -17,12 +18,19 @@ type mergeMethod interface {
 }
 
 func newMerger(m1, m2 *M, method mergeMethod) *merger {
+	n1, n2 := 0, 0
+	if m1 != nil {
+		n1 = m1.States.count() + 1
+	}
+	if m2 != nil {
+		n2 = m2.States.count() + 1
+	}
 	return &merger{
 		m1:          m1,
 		m2:          m2,
 		m:           &M{},
 		l:           list.New(),
-		idm:         make(map[[2]int]int),
+		idm:         make([]int, n1*n2),
 		mergeMethod: method}
 }
 
@@ -57,12 +65,13 @@ func (s *S) trivialFinal() bool {
 }
 
 func (q *merger) getID(id1, id2 int) int {
-	key := [2]int{id1, id2}
-	if id, ok := q.idm[key]; ok {
+	key := (id1+1)*(q.m2.States.count()+1) + (id2 + 1)
+	if id := q.idm[key] - 1; id >= 0 {
 		return id
 	}
-	id := len(q.m.States)
-	q.idm[key] = id
+	id := q.idmCount
+	q.idmCount++
+	q.idm[key] = id + 1
 	q.m.States = append(q.m.States, S{})
 	q.put(id, id1, id2)
 	return id
