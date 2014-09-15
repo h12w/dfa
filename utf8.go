@@ -69,11 +69,12 @@ func (s *u8s) add(lo, hi rune) {
 	s.a = append(s.a, u8{lo, hi})
 }
 
-func (s *u8s) m() (m *M) {
+func (s *u8s) m() (*M, error) {
+	ms := make([]*M, len(s.a))
 	for i := range s.a {
-		m = m.or(s.a[i].m())
+		ms[i] = s.a[i].m()
 	}
-	return m
+	return orMany(ms)
 }
 
 type u8 struct {

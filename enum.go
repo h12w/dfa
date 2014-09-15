@@ -25,8 +25,5 @@ func (l StateLabel) toInternal() StateLabel {
 }
 
 func (l StateLabel) toExternal() int {
-	if l >= labeledFinalStart {
-		return int(l - labeledFinalStart)
-	}
-	panic("machine is not labeled")
+	return int(l - labeledFinalStart)
 }

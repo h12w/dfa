@@ -276,6 +276,11 @@ func TestExpr(t *testing.T) {
 }
 
 func TestSingle(t *testing.T) {
-	s("a").AtMost(3).SaveSVG("a3.svg")
-	//or(b(0x3bf, 0x3bf), b(0x3c0, 0x3c0)).SaveSVG("classL.svg")
+	bom := s("\uFEFF")
+	text := b(0xFEFE, 0xFF00).Exclude(bom).Minimize()
+	a, _ := text.con(text.Repeat())
+	a, _ = a.con(s("b"))
+	a.SaveSVG("a.svg")
+	bom.SaveSVG("bom.svg")
+	//	con(a, bom)
 }

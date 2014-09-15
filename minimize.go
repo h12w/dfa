@@ -44,9 +44,9 @@ func (m *M) eachUnreachable(visit func(int)) {
 	}
 }
 
-func (m *M) Minimize() *M {
+func (m *M) minimize() (*M, error) {
 	if m == nil {
-		return nil
+		return nil, nil
 	}
 	n := m.States.count()
 	diff := newDiff(n)
@@ -129,9 +129,8 @@ func (d *boolPairs) get(i, j int) bool {
 
 func (d *boolPairs) index(i, j int) int {
 	if i == j {
-		panic("i should not be equal to j")
-	}
-	if i > j {
+		panic("i should never be equal to j")
+	} else if i > j {
 		i, j = j, i
 	}
 	return (2*d.n-i-1)*i/2 + (j - i - 1)

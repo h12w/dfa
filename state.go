@@ -15,13 +15,13 @@ type transArray [256]int
 
 func stateBetween(lo, hi byte, next int) S {
 	a := newTransArray()
-	a.setBetween(lo, hi, next)
+	a.setBetween(lo, hi, next) // there is nothing to conflict with
 	return S{Table: a.toTransTable()}
 }
 
 func stateTo(b byte, next int) S {
 	a := newTransArray()
-	a.set(b, next)
+	a.set(b, next) // there is nothing to conflict with
 	return S{Table: a.toTransTable()}
 }
 
@@ -33,17 +33,22 @@ func (s *S) final() bool {
 	return s.Label.final()
 }
 
-func (s *S) connect(o *S) {
+func (s *S) connect(o *S) error {
 	a := s.Table.toTransArray()
-	o.each(func(t *Trans) {
-		a.setBetween(t.Lo, t.Hi, t.Next)
-	})
+	for i := range o.Table {
+		t := &o.Table[i]
+		if err := a.setBetween(t.Lo, t.Hi, t.Next); err != nil {
+			return err
+		}
+	}
 	s.Table = a.toTransTable()
+	return nil
 }
 
-func (s *S) filterConnect(o *S, filters []func(byte) bool) {
+func (s *S) filterConnect(o *S, filters []func(byte) bool) error {
 	a := s.Table.toTransArray()
-	o.each(func(t *Trans) {
+	for i := range o.Table {
+		t := &o.Table[i]
 		b := t.Lo
 		for {
 			connect := true
@@ -54,15 +59,18 @@ func (s *S) filterConnect(o *S, filters []func(byte) bool) {
 				}
 			}
 			if connect {
-				a.set(b, t.Next)
+				if err := a.set(b, t.Next); err != nil {
+					return err
+				}
 			}
 			if b == t.Hi {
 				break
 			}
 			b++
 		}
-	})
+	}
 	s.Table = a.toTransTable()
+	return nil
 }
 
 func (s *S) clone() S {
@@ -172,28 +180,30 @@ func newTransArray() (a transArray) {
 	return a
 }
 
-func (a *transArray) set(b byte, next int) *transArray {
+func (a *transArray) set(b byte, next int) error {
 	if a[b] < 0 {
 		a[b] = next
-		return a
+		return nil
 	}
 	if a[b] != next {
-		panic(fmt.Errorf("byte %s has already been assigned a different S %d", quote(b), next))
+		return fmt.Errorf("byte %s has already been assigned a different state %d", quote(b), next)
 	}
-	return a
+	return nil
 }
 
-func (a *transArray) setBetween(lo, hi byte, next int) *transArray {
+func (a *transArray) setBetween(lo, hi byte, next int) error {
 	b := lo
 	for {
-		a.set(b, next)
+		if err := a.set(b, next); err != nil {
+			return err
+		}
 		if b == hi {
 			break
 		} else {
 			b++
 		}
 	}
-	return a
+	return nil
 }
 
 func (a *transArray) toTransTable() (Table TransTable) {

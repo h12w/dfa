@@ -5,25 +5,32 @@ import (
 	"unicode"
 )
 
-func CharClass(name string) (m *M) {
+func charClass(name string) (m *M, err error) {
 	switch name {
 	case "L":
-		return classL
+		return classL, nil
 	}
 	ms := []*M{}
-	eachRangeInCharClass(name, func(lo, hi rune) {
+	err = eachRangeInCharClass(name, func(lo, hi rune) {
 		ms = append(ms, Between(lo, hi))
 	})
-	return orMany(ms).Minimize()
+	if err != nil {
+		return nil, err
+	}
+	m, err = orMany(ms)
+	if err != nil {
+		return nil, err
+	}
+	return m.minimize()
 }
 
-func eachRangeInCharClass(name string, visit func(lo, hi rune)) {
+func eachRangeInCharClass(name string, visit func(lo, hi rune)) error {
 	table := unicode.Categories[name]
 	if table == nil {
 		table = unicode.Scripts[name]
-	}
-	if table == nil {
-		panic(fmt.Errorf("character class %s not exists", name))
+		if table == nil {
+			return fmt.Errorf("character class %s not exists", name)
+		}
 	}
 
 	for _, xr := range table.R16 {
@@ -32,6 +39,7 @@ func eachRangeInCharClass(name string, visit func(lo, hi rune)) {
 	for _, xr := range table.R32 {
 		eachRangeWithStride(rune(xr.Lo), rune(xr.Hi), rune(xr.Stride), visit)
 	}
+	return nil
 }
 func eachRangeWithStride(lo, hi, stride rune, visit func(lo, hi rune)) {
 	if stride == 1 {

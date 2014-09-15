@@ -12,7 +12,7 @@ type merger struct {
 	mergeMethod
 }
 type mergeMethod interface {
-	mergeLabel(s1, s2 *S) StateLabel
+	mergeLabel(s1, s2 *S) (StateLabel, error)
 	eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int))
 }
 
@@ -26,26 +26,30 @@ func newMerger(m1, m2 *M, method mergeMethod) *merger {
 		mergeMethod: method}
 }
 
-func (q *merger) merge() *M {
+func (q *merger) merge() (m *M, err error) {
 	if q.m1 == nil {
-		return q.m2.clone()
+		return q.m2.clone(), nil
 	} else if q.m2 == nil {
-		return q.m1.clone()
+		return q.m1.clone(), nil
 	}
 	q.getID(q.m1.Start, q.m2.Start)
 	for q.l.Len() > 0 {
 		id, id1, id2 := q.get()
-		q.m.States[id] = q.mergeState(q.m1.S(id1), q.m2.S(id2))
+		q.m.States[id], err = q.mergeState(q.m1.S(id1), q.m2.S(id2))
+		if err != nil {
+			return nil, err
+		}
 	}
-	return q.m
+	return q.m, nil
 }
 
-func (q *merger) mergeState(s1, s2 *S) S {
+func (q *merger) mergeState(s1, s2 *S) (S, error) {
 	a := newTransArray()
 	q.eachEdge(s1, s2, func(b byte, id1, id2 int) {
 		a[b] = q.getID(id1, id2)
 	})
-	return S{q.mergeLabel(s1, s2), a.toTransTable()}
+	label, err := q.mergeLabel(s1, s2)
+	return S{label, a.toTransTable()}, err
 }
 
 func (s *S) trivialFinal() bool {
@@ -75,12 +79,12 @@ func (q *merger) get() (id, id1, id2 int) {
 
 type intersection struct{}
 
-func (intersection) mergeLabel(s1, s2 *S) StateLabel {
+func (intersection) mergeLabel(s1, s2 *S) (StateLabel, error) {
 	l1, l2 := s1.Label, s2.Label
 	if l1 == l2 {
-		return l1
+		return l1, nil
 	}
-	return notFinal
+	return notFinal, nil
 }
 
 func (intersection) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
@@ -102,18 +106,18 @@ func (intersection) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 
 type union struct{}
 
-func (union) mergeLabel(s1, s2 *S) StateLabel {
+func (union) mergeLabel(s1, s2 *S) (StateLabel, error) {
 	if s1 == nil {
-		return s2.Label
+		return s2.Label, nil
 	}
 	if s2 == nil {
-		return s1.Label
+		return s1.Label, nil
 	}
 	f1, f2 := s1.Label, s2.Label
 	if f1 > defaultFinal && f2 > defaultFinal && f1 != f2 {
-		panic(fmt.Errorf("conflict Label: %d & %d", f1.toExternal(), f2.toExternal()))
+		return -1, fmt.Errorf("conflict Label: %d & %d", f1.toExternal(), f2.toExternal())
 	}
-	return finalMax(f1, f2)
+	return finalMax(f1, f2), nil // TODO reove finalMax
 }
 func finalMax(a, b StateLabel) StateLabel {
 	if a > b {
@@ -156,18 +160,18 @@ func (union) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 
 type difference struct{}
 
-func (difference) mergeLabel(s1, s2 *S) StateLabel {
+func (difference) mergeLabel(s1, s2 *S) (StateLabel, error) {
 	if s1 == nil {
-		return notFinal
+		return notFinal, nil
 	}
 	if s2 == nil {
-		return s1.Label
+		return s1.Label, nil
 	}
 	f1, f2 := s1.Label, s2.Label
 	if f2.final() {
-		return notFinal
+		return notFinal, nil
 	}
-	return f1
+	return f1, nil
 }
 
 func (difference) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
