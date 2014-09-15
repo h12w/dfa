@@ -125,10 +125,6 @@ func (t *TransTable) iter() TableIter {
 	}
 }
 
-func (s *S) each(visit func(*Trans)) {
-	s.Table.each(visit)
-}
-
 func (s *S) seqNext(b byte) (sid int) {
 	for i := range s.Table {
 		if s.Table[i].Lo <= b && b <= s.Table[i].Hi {
@@ -153,23 +149,18 @@ func (s *S) next(b byte) (sid int) {
 	return invalidID
 }
 
-func (Table *TransTable) each(visit func(*Trans)) {
-	for i := range *Table {
-		visit(&(*Table)[i])
-	}
-}
-
 func (Table *TransTable) clone() TransTable {
 	return append(TransTable(nil), *Table...)
 }
 
 func (Table *TransTable) toTransArray() transArray {
 	var a transArray
-	Table.each(func(t *Trans) {
+	for j := range *Table {
+		t := &(*Table)[j]
 		for i := int(t.Lo); i <= int(t.Hi); i++ {
 			a.set(byte(i), t.Next)
 		}
-	})
+	}
 	return a
 }
 

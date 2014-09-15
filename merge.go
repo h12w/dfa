@@ -20,10 +20,10 @@ type mergeMethod interface {
 func newMerger(m1, m2 *M, method mergeMethod) *merger {
 	n1, n2 := 0, 0
 	if m1 != nil {
-		n1 = m1.States.count() + 1
+		n1 = len(m1.States) + 1
 	}
 	if m2 != nil {
-		n2 = m2.States.count() + 1
+		n2 = len(m2.States) + 1
 	}
 	return &merger{
 		m1:          m1,
@@ -65,7 +65,7 @@ func (s *S) trivialFinal() bool {
 }
 
 func (q *merger) getID(id1, id2 int) int {
-	key := (id1+1)*(q.m2.States.count()+1) + (id2 + 1)
+	key := (id1+1)*(len(q.m2.States)+1) + (id2 + 1)
 	if id := q.idm[key] - 1; id >= 0 {
 		return id
 	}

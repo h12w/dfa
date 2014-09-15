@@ -81,7 +81,7 @@ func (m1 *M) con(m2 *M) (*M, error) {
 		return m, nil
 	}
 	m2 = m2.clone()
-	m2.shiftID(m.States.count() - 1)
+	m2.shiftID(len(m.States) - 1)
 	for i := range m.States {
 		if f := &m.States[i]; f.final() {
 			if err := f.connect(m2.startState()); err != nil {
@@ -224,13 +224,14 @@ func Optional(ms ...*M) *M {
 
 func (m *M) Complement() *M {
 	m = m.clone()
-	m.each(func(f *S) {
+	for i := range m.States {
+		f := &m.States[i]
 		if f.final() {
 			f.Label = notFinal
 		} else {
 			f.Label = defaultFinal
 		}
-	})
+	}
 	return m.deleteUnreachable()
 }
 

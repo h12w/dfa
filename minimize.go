@@ -4,7 +4,8 @@ func (m *M) deleteUnreachable() *M {
 	reachable := m.reachable()
 	for i := range reachable {
 		if !reachable[i] {
-			m.States.each(func(s *S) {
+			for j := range m.States {
+				s := &m.States[j]
 				a := s.Table.toTransArray()
 				for b := range a {
 					if a.get(byte(b)) == i {
@@ -12,13 +13,13 @@ func (m *M) deleteUnreachable() *M {
 					}
 				}
 				s.Table = a.toTransTable()
-			})
+			}
 		}
 	}
 	return m
 }
 func (m *M) reachable() []bool {
-	reachFinal := make([]bool, m.States.count())
+	reachFinal := make([]bool, len(m.States))
 	for i := range m.States {
 		if m.States[i].final() {
 			reachFinal[i] = true
@@ -47,7 +48,7 @@ func (m *M) minimize() (*M, error) {
 	if m == nil {
 		return nil, nil
 	}
-	n := m.States.count()
+	n := len(m.States)
 	diff := newDiff(n)
 	diff.eachFalse(func(i, j int) {
 		s, t := m.States[i], m.States[j]
@@ -73,13 +74,14 @@ func (m *M) minimize() (*M, error) {
 		idm[j] = i
 	})
 	if len(idm) > 0 {
-		m.each(func(s *S) {
-			s.each(func(t *Trans) {
+		for i := range m.States {
+			for j := range m.States[i].Table {
+				t := &m.States[i].Table[j]
 				if small, ok := idm[t.Next]; ok {
 					t.Next = small
 				}
-			})
-		})
+			}
+		}
 	}
 	return m.and(m) // m.and(m) is also a way to remove unreachable nodes
 }
@@ -113,20 +115,17 @@ func newDiff(n int) *boolPairs {
 
 func (d *boolPairs) set(i, j int) {
 	d.hasNewDiff = true
-	d.a[d.index(i, j)] = true
+	if i > j {
+		i, j = j, i
+	}
+	d.a[(2*d.n-i-1)*i/2+(j-i-1)] = true
 }
 
 func (d *boolPairs) get(i, j int) bool {
-	return d.a[d.index(i, j)]
-}
-
-func (d *boolPairs) index(i, j int) int {
-	if i == j {
-		panic("i should never be equal to j")
-	} else if i > j {
+	if i > j {
 		i, j = j, i
 	}
-	return (2*d.n-i-1)*i/2 + (j - i - 1)
+	return d.a[(2*d.n-i-1)*i/2+(j-i-1)]
 }
 
 func (d *boolPairs) eachFalse(visit func(int, int)) {

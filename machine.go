@@ -17,10 +17,6 @@ func (m *M) clone() *M {
 	return &M{m.Start, m.States.clone()}
 }
 
-func (m *M) Count() int {
-	return m.States.count()
-}
-
 func (m *M) startState() *S {
 	return &m.States[m.Start]
 }
@@ -32,22 +28,12 @@ func (m *M) As(Label int) *M {
 	return m
 }
 
-func (ss States) each(visit func(*S)) {
-	for i := range ss {
-		visit(&ss[i])
-	}
-}
-
 func (ss States) eachFinal(visit func(*S)) {
 	for i := range ss {
 		if ss[i].final() {
 			visit(&ss[i])
 		}
 	}
-}
-
-func (ss States) count() int {
-	return len(ss)
 }
 
 func (ss States) clone() States {
@@ -66,9 +52,9 @@ func (ss States) S(id int) *S {
 }
 
 func (ss States) shiftID(offset int) {
-	ss.each(func(s *S) {
-		s.each(func(t *Trans) {
-			t.Next += offset
-		})
-	})
+	for i := range ss {
+		for j := range ss[i].Table {
+			ss[i].Table[j].Next += offset
+		}
+	}
 }
