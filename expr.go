@@ -107,6 +107,12 @@ func orMany(ms []*M) (*M, error) {
 	return opMany((*M).or, ms)
 }
 func (m1 *M) or(m2 *M) (*M, error) {
+	if m1 == nil {
+		return m2.clone(), nil
+	}
+	if m2 == nil {
+		return m1.clone(), nil
+	}
 	m, err := newMerger(m1, m2, union{}).merge()
 	if err != nil {
 		return nil, err
@@ -125,6 +131,12 @@ func andMany(ms []*M) (*M, error) {
 	return opMany((*M).and, ms)
 }
 func (m1 *M) and(m2 *M) (*M, error) {
+	if m1 == nil {
+		return m2.clone(), nil
+	}
+	if m2 == nil {
+		return m1.clone(), nil
+	}
 	m, err := newMerger(m1, m2, intersection{}).merge()
 	if err != nil {
 		return nil, err

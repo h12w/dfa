@@ -8,9 +8,13 @@ import (
 type merger struct {
 	m1, m2, m *M
 	l         *list.List
-	idm       []int
-	idmCount  int
+	idMap
 	mergeMethod
+}
+type idMap struct {
+	a     []int
+	n2    int
+	count int
 }
 type mergeMethod interface {
 	mergeLabel(s1, s2 *S) (StateLabel, error)
@@ -18,29 +22,19 @@ type mergeMethod interface {
 }
 
 func newMerger(m1, m2 *M, method mergeMethod) *merger {
-	n1, n2 := 0, 0
-	if m1 != nil {
-		n1 = len(m1.States) + 1
-	}
-	if m2 != nil {
-		n2 = len(m2.States) + 1
-	}
+	n1 := len(m1.States) + 1
+	n2 := len(m2.States) + 1
 	return &merger{
 		m1:          m1,
 		m2:          m2,
 		m:           &M{},
 		l:           list.New(),
-		idm:         make([]int, n1*n2),
+		idMap:       idMap{a: make([]int, n1*n2), n2: n2},
 		mergeMethod: method}
 }
 
 func (q *merger) merge() (m *M, err error) {
-	if q.m1 == nil {
-		return q.m2.clone(), nil
-	} else if q.m2 == nil {
-		return q.m1.clone(), nil
-	}
-	q.getID(q.m1.Start, q.m2.Start)
+	q.put(q.m1.Start, q.m2.Start)
 	for q.l.Len() > 0 {
 		id, id1, id2 := q.get()
 		q.m.States[id], err = q.mergeState(q.m1.S(id1), q.m2.S(id2))
@@ -54,31 +48,31 @@ func (q *merger) merge() (m *M, err error) {
 func (q *merger) mergeState(s1, s2 *S) (S, error) {
 	var a transArray
 	q.eachEdge(s1, s2, func(b byte, id1, id2 int) {
-		a.set(b, q.getID(id1, id2))
+		a.set(b, q.put(id1, id2))
 	})
 	label, err := q.mergeLabel(s1, s2)
 	return S{label, a.toTransTable()}, err
 }
 
-func (s *S) trivialFinal() bool {
-	return s.Label == defaultFinal && len(s.Table) == 0
-}
-
-func (q *merger) getID(id1, id2 int) int {
-	key := (id1+1)*(len(q.m2.States)+1) + (id2 + 1)
-	if id := q.idm[key] - 1; id >= 0 {
-		return id
+func (q *merger) put(id1, id2 int) int {
+	id, isNew := q.getID(id1, id2)
+	if isNew {
+		q.m.States = append(q.m.States, S{})
+		q.l.PushFront([3]int{id, id1, id2})
 	}
-	id := q.idmCount
-	q.idmCount++
-	q.idm[key] = id + 1
-	q.m.States = append(q.m.States, S{})
-	q.put(id, id1, id2)
 	return id
 }
-
-func (q *merger) put(id, id1, id2 int) {
-	q.l.PushFront([3]int{id, id1, id2})
+func (m *idMap) getID(id1, id2 int) (id int, isNew bool) {
+	id1++
+	id2++
+	key := id1*m.n2 + id2
+	if id = m.a[key] - 1; id >= 0 {
+		return id, false
+	}
+	id = m.count
+	m.count++
+	m.a[key] = id + 1
+	return id, true
 }
 
 func (q *merger) get() (id, id1, id2 int) {
@@ -126,13 +120,17 @@ func (union) mergeLabel(s1, s2 *S) (StateLabel, error) {
 	if f1 > defaultFinal && f2 > defaultFinal && f1 != f2 {
 		return -1, fmt.Errorf("conflict Label: %d & %d", f1.toExternal(), f2.toExternal())
 	}
-	return finalMax(f1, f2), nil // TODO reove finalMax
-}
-func finalMax(a, b StateLabel) StateLabel {
-	if a > b {
-		return a
+	if f1 > f2 {
+		// same as:
+		// !f2.final() && f1.final() ||
+		// f2.final() && f1.labeled()
+		return f1, nil
 	}
-	return b
+	// same as:
+	// f1 == f2 ||
+	// !f1.final() && f2.final() ||
+	// f1.final() && f2.labeled()
+	return f2, nil
 }
 
 func (union) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
