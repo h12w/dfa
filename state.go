@@ -33,6 +33,13 @@ func (s *S) final() bool {
 	return s.Label.final()
 }
 
+func (s *S) label() StateLabel {
+	if s == nil {
+		return notFinal
+	}
+	return s.Label
+}
+
 func (s *S) connect(o *S) error {
 	a := s.Table.toTransArray()
 	for i := range o.Table {

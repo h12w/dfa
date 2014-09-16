@@ -10,6 +10,7 @@ type merger struct {
 	l         *list.List
 	idMap
 	mergeMethod
+	conMode bool
 }
 type idMap struct {
 	a     []int
@@ -17,7 +18,7 @@ type idMap struct {
 	count int
 }
 type mergeMethod interface {
-	mergeLabel(s1, s2 *S) (StateLabel, error)
+	mergeLabel(l1, l2 StateLabel) (StateLabel, error)
 	eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int))
 }
 
@@ -33,32 +34,47 @@ func newMerger(m1, m2 *M, method mergeMethod) *merger {
 		mergeMethod: method}
 }
 
-func (q *merger) merge() (m *M, err error) {
-	q.put(q.m1.Start, q.m2.Start)
-	for q.l.Len() > 0 {
-		id, id1, id2 := q.get()
-		q.m.States[id], err = q.mergeState(q.m1.S(id1), q.m2.S(id2))
+func (m *merger) concatMode() *merger {
+	m.conMode = true
+	return m
+}
+
+func (m *merger) merge() (*M, error) {
+	if m.conMode {
+		m.add(m.m1.Start, -1)
+	} else {
+		m.add(m.m1.Start, m.m2.Start)
+	}
+	for m.l.Len() > 0 {
+		id, id1, id2 := m.get()
+		var err error
+		m.m.States[id], err = m.mergeState(m.m1.state(id1), m.m2.state(id2))
 		if err != nil {
 			return nil, err
 		}
 	}
-	return q.m, nil
+	return m.m, nil
 }
 
-func (q *merger) mergeState(s1, s2 *S) (S, error) {
+func (m *merger) mergeState(s1, s2 *S) (S, error) {
 	var a transArray
-	q.eachEdge(s1, s2, func(b byte, id1, id2 int) {
-		a.set(b, q.put(id1, id2))
+	m.eachEdge(s1, s2, func(b byte, id1, id2 int) {
+		a.set(b, m.add(id1, id2))
 	})
-	label, err := q.mergeLabel(s1, s2)
+	label, err := m.mergeLabel(s1.label(), s2.label())
 	return S{label, a.toTransTable()}, err
 }
 
-func (q *merger) put(id1, id2 int) int {
-	id, isNew := q.getID(id1, id2)
+func (m *merger) add(id1, id2 int) int {
+	if m.conMode {
+		if id1 >= 0 && m.m1.States[id1].final() {
+			id2 = m.m2.Start
+		}
+	}
+	id, isNew := m.getID(id1, id2)
 	if isNew {
-		q.m.States = append(q.m.States, S{})
-		q.l.PushFront([3]int{id, id1, id2})
+		m.m.States = append(m.m.States, S{})
+		m.l.PushFront([3]int{id, id1, id2})
 	}
 	return id
 }
@@ -75,15 +91,14 @@ func (m *idMap) getID(id1, id2 int) (id int, isNew bool) {
 	return id, true
 }
 
-func (q *merger) get() (id, id1, id2 int) {
-	v := q.l.Remove(q.l.Back()).([3]int)
+func (m *merger) get() (id, id1, id2 int) {
+	v := m.l.Remove(m.l.Back()).([3]int)
 	return v[0], v[1], v[2]
 }
 
 type intersection struct{}
 
-func (intersection) mergeLabel(s1, s2 *S) (StateLabel, error) {
-	l1, l2 := s1.Label, s2.Label
+func (intersection) mergeLabel(l1, l2 StateLabel) (StateLabel, error) {
 	if l1 == l2 {
 		return l1, nil
 	}
@@ -107,48 +122,37 @@ func (intersection) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	}
 }
 
-type union struct{}
-
-func (union) mergeLabel(s1, s2 *S) (StateLabel, error) {
-	if s1 == nil {
-		return s2.Label, nil
-	}
-	if s2 == nil {
-		return s1.Label, nil
-	}
-	f1, f2 := s1.Label, s2.Label
-	if f1 > defaultFinal && f2 > defaultFinal && f1 != f2 {
-		return -1, fmt.Errorf("conflict Label: %d & %d", f1.toExternal(), f2.toExternal())
-	}
-	if f1 > f2 {
-		// same as:
-		// !f2.final() && f1.final() ||
-		// f2.final() && f1.labeled()
-		return f1, nil
-	}
-	// same as:
-	// f1 == f2 ||
-	// !f1.final() && f2.final() ||
-	// f1.final() && f2.labeled()
-	return f2, nil
+type union struct {
+	unionEdge
 }
 
-func (union) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
+func (union) mergeLabel(l1, l2 StateLabel) (StateLabel, error) {
+	if l1 > defaultFinal && l2 > defaultFinal && l1 != l2 {
+		return -1, fmt.Errorf("conflict Label: %d & %d", l1.toExternal(), l2.toExternal())
+	}
+	if l1 > l2 {
+		// same as:
+		// !l2.final() && l1.final() ||
+		// l2.final() && l1.labeled()
+		return l1, nil
+	}
+	// same as:
+	// l1 == l2 ||
+	// !l1.final() && l2.final() ||
+	// l1.final() && l2.labeled()
+	return l2, nil
+}
+
+type unionEdge struct{}
+
+func (unionEdge) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	it1, it2 := s1.iter(), s2.iter()
 	b1, next1 := it1.next()
 	b2, next2 := it2.next()
 	for {
 		b := b1
 		id1, id2 := next1, next2
-		if id1 < 0 && id2 < 0 {
-			break
-		} else if id1 < 0 {
-			b = b2
-			b2, next2 = it2.next()
-		} else if id2 < 0 {
-			b = b1
-			b1, next1 = it1.next()
-		} else {
+		if id1 >= 0 && id2 >= 0 {
 			if b1 == b2 {
 				b1, next1 = it1.next()
 				b2, next2 = it2.next()
@@ -160,25 +164,27 @@ func (union) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 				id1 = invalidID
 				b2, next2 = it2.next()
 			}
+		} else if id1 >= 0 {
+			b = b1
+			b1, next1 = it1.next()
+		} else if id2 >= 0 {
+			b = b2
+			b2, next2 = it2.next()
+		} else {
+			break
 		}
+
 		visit(b, id1, id2)
 	}
 }
 
 type difference struct{}
 
-func (difference) mergeLabel(s1, s2 *S) (StateLabel, error) {
-	if s1 == nil {
+func (difference) mergeLabel(l1, l2 StateLabel) (StateLabel, error) {
+	if l2.final() {
 		return notFinal, nil
 	}
-	if s2 == nil {
-		return s1.Label, nil
-	}
-	f1, f2 := s1.Label, s2.Label
-	if f2.final() {
-		return notFinal, nil
-	}
-	return f1, nil
+	return l1, nil
 }
 
 func (difference) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
@@ -188,15 +194,7 @@ func (difference) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 	for {
 		b := b1
 		id1, id2 := next1, next2
-		if id1 < 0 && id2 < 0 {
-			break
-		} else if id1 < 0 {
-			b = b2
-			b2, next2 = it2.next()
-		} else if id2 < 0 {
-			b = b1
-			b1, next1 = it1.next()
-		} else {
+		if id1 >= 0 && id2 >= 0 {
 			if b1 == b2 {
 				b1, next1 = it1.next()
 				b2, next2 = it2.next()
@@ -208,7 +206,28 @@ func (difference) eachEdge(s1, s2 *S, visit func(b byte, id1, id2 int)) {
 				id1 = invalidID
 				b2, next2 = it2.next()
 			}
+		} else if id1 >= 0 {
+			b = b1
+			b1, next1 = it1.next()
+		} else {
+			break
 		}
+
 		visit(b, id1, id2)
 	}
+}
+
+type concat struct {
+	acceptFirst bool
+	unionEdge
+}
+
+func (c concat) mergeLabel(l1, l2 StateLabel) (StateLabel, error) {
+	if l2.final() {
+		return l2, nil
+	}
+	if c.acceptFirst && l1.final() {
+		return l1, nil
+	}
+	return l2, nil
 }

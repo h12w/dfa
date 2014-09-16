@@ -266,8 +266,30 @@ func TestExpr(t *testing.T) {
 			s1$
 			`,
 		},
+		{
+			con(b(0xFEFE, 0xFF00).Exclude("\uFEFF").AtLeast(1), "\uFEFF"), `
+			s0
+				ef      s1
+			s1
+				bb      s2
+				bc      s3
+			s2
+				be      s4
+			s3
+				80      s4
+			s4
+				ef      s5
+			s5
+				bb      s6
+				bc      s3
+			s6
+				be      s4
+				bf      s7
+			s7$
+			`,
+		},
 		//		{
-		//			cc(s(`a`).ZeroOrMore(), s(`a`)), `
+		//			con(s(`a`).Repeat(), s(`a`)), `
 		//			`,
 		//		},
 	} {
@@ -277,10 +299,9 @@ func TestExpr(t *testing.T) {
 
 func TestSingle(t *testing.T) {
 	bom := s("\uFEFF")
-	text := b(0xFEFE, 0xFF00).Exclude(bom).Minimize()
-	a, _ := text.con(text.Repeat())
-	a, _ = a.con(s("b"))
+	a := b(0xFEFE, 0xFF00).Exclude(bom).AtLeast(1).Minimize()
 	a.SaveSVG("a.svg")
 	bom.SaveSVG("bom.svg")
+	con(a, bom).Minimize().SaveSVG("abom.svg")
 	//	con(a, bom)
 }

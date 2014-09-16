@@ -44,7 +44,7 @@ func (ss States) clone() States {
 	return ss
 }
 
-func (ss States) S(id int) *S {
+func (ss States) state(id int) *S {
 	if id < 0 {
 		return nil
 	}

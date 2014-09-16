@@ -76,10 +76,19 @@ func conMany(ms []*M) (*M, error) {
 	return opMany((*M).con, ms)
 }
 func (m1 *M) con(m2 *M) (*M, error) {
-	m := m1.clone()
-	if m2 == nil {
-		return m, nil
+	if m, err := m1.quickCon(m2); err == nil {
+		return m, err
 	}
+	return newMerger(m1, m2, concat{acceptFirst: m2.startState().final()}).concatMode().merge()
+}
+func (m1 *M) quickCon(m2 *M) (*M, error) {
+	if m1 == nil {
+		return m2.clone(), nil
+	}
+	if m2 == nil {
+		return m1.clone(), nil
+	}
+	m := m1.clone()
 	m2 = m2.clone()
 	m2.shiftID(len(m.States) - 1)
 	for i := range m.States {
