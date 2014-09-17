@@ -298,10 +298,4 @@ func TestExpr(t *testing.T) {
 }
 
 func TestSingle(t *testing.T) {
-	bom := s("\uFEFF")
-	a := b(0xFEFE, 0xFF00).Exclude(bom).AtLeast(1).Minimize()
-	a.SaveSVG("a.svg")
-	bom.SaveSVG("bom.svg")
-	con(a, bom).Minimize().SaveSVG("abom.svg")
-	//	con(a, bom)
 }

@@ -134,7 +134,7 @@ func And(ms ...interface{}) *M {
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return m.deleteUnreachable()
 }
 func andMany(ms []*M) (*M, error) {
 	return opMany((*M).and, ms)
@@ -253,6 +253,26 @@ func (m *M) Complement() *M {
 			f.Label = defaultFinal
 		}
 	}
+	return m.deleteUnreachable()
+}
+
+func (m *M) InvalidPrefix() *M {
+	m = m.clone()
+	for i := range m.States {
+		s := &m.States[i]
+		if s.final() {
+			s.Label = notFinal
+		} else {
+			a := s.Table.toTransArray()
+			for i := range a {
+				if a[i] <= 0 {
+					a.set(byte(i), len(m.States))
+				}
+			}
+			s.Table = a.toTransTable()
+		}
+	}
+	m.States = append(m.States, finalState())
 	return m.deleteUnreachable()
 }
 
