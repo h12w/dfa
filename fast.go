@@ -9,13 +9,18 @@ type FastS struct {
 	Label int
 	Trans [256]*FastS
 }
-type Action struct {
-}
 
 func (m *M) ToFast() *FastM {
 	fm := &FastM{make([]FastS, len(m.States))}
 	for i := range m.States {
-		fm.States[i] = m.States[i].toFast(fm)
+		s, fs := &m.States[i], &fm.States[i]
+		fs.Label = int(s.Label - labeledFinalStart)
+		for j := range s.Table {
+			trans := &s.Table[j]
+			for b := int(trans.Lo); b <= int(trans.Hi); b++ {
+				fs.Trans[b] = &fm.States[trans.Next]
+			}
+		}
 	}
 	return fm
 }
@@ -26,19 +31,4 @@ func (m *FastM) Count() int {
 
 func (m *FastM) Size() int {
 	return int(reflect.TypeOf(FastS{}).Size()) * len(m.States)
-}
-
-func (s *S) toFast(fm *FastM) (fs FastS) {
-	fs.Label = int(s.Label - labeledFinalStart)
-	for _, trans := range s.Table {
-		b := trans.Lo
-		for {
-			fs.Trans[b] = &fm.States[trans.Next]
-			if b == trans.Hi {
-				break
-			}
-			b++
-		}
-	}
-	return
 }
