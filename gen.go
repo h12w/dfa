@@ -5,22 +5,31 @@ import (
 	"io"
 )
 
-func (m *M) WriteGo(w io.Writer) {
-	fmt.Fprintln(w, "&dfa.M{")
-	fmt.Fprintln(w, "States: dfa.States{")
+func (m *M) WriteGo(w io.Writer, pac string) {
+	if pac != "dfa" {
+		fmt.Fprintln(w, "&dfa.M{")
+		fmt.Fprintln(w, "States: dfa.States{")
+	} else {
+		fmt.Fprintln(w, "&M{")
+		fmt.Fprintln(w, "States: States{")
+	}
 	for i := range m.States {
-		m.States[i].writeGo(w)
+		m.States[i].writeGo(w, pac != "dfa")
 	}
 	fmt.Fprint(w, `}}`)
 }
 
-func (s *S) writeGo(w io.Writer) {
+func (s *S) writeGo(w io.Writer, writePrefix bool) {
 	fmt.Fprintln(w, "{")
 	if s.Label != 0 {
 		fmt.Fprintf(w, "Label: %d,\n", s.Label)
 	}
 	if s.Table != nil {
-		fmt.Fprint(w, "Table: dfa.TransTable{")
+		if writePrefix {
+			fmt.Fprint(w, "Table: dfa.TransTable{")
+		} else {
+			fmt.Fprint(w, "Table: TransTable{")
+		}
 		s.Table.writeGo(w)
 		fmt.Fprint(w, "}")
 	}

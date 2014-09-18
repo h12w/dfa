@@ -54,6 +54,10 @@ func Char(s string) (m *M) {
 }
 
 func CharClass(name string) *M {
+	switch name {
+	case "L":
+		return classL
+	}
 	m, err := charClass(name)
 	if err != nil {
 		panic(err)
