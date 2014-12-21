@@ -3,7 +3,7 @@ package dfa
 import (
 	"bytes"
 
-	"github.com/hailiang/gspec"
+	"h12.me/gspec"
 
 	"testing"
 )
@@ -33,14 +33,11 @@ func TestDotFormat(t *testing.T) {
 			4 -> 5 [label="'0'-'9'\n'A'-'F'\n'a'-'f'"];
 			5 [shape=doublecircle, width=".18", xlabel="L0"];
 			5 -> 5 [label="'0'-'9'\n'A'-'F'\n'a'-'f'"];
-		}
-	`))
+		}`))
 }
 
 func (m *M) dotFormat() string {
 	var w bytes.Buffer
-	w.WriteByte('\n')
 	m.writeDotFormat(&w, &GraphOption{"Ubuntu Mono", false})
-	w.WriteByte('\n')
 	return w.String()
 }

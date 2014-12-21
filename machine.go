@@ -1,4 +1,4 @@
-package dfa
+package dfa // import "h12.me/dfa"
 
 type M struct {
 	Start int

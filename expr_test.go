@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hailiang/gspec"
+	"h12.me/gspec"
 )
 
 var (
@@ -54,28 +54,28 @@ func TestExpr(t *testing.T) {
 	}{
 		{
 			s(""), `
-			s0$
-		`},
+			s0$`,
+		},
 		{
 			s("a"), `
 			s0
 				'a'     s1
-			s1$
-		`},
+			s1$`,
+		},
 		{
 			s("ab"), `
 			s0
 				'a'     s1
 			s1
 				'b'     s2
-			s2$
-		`},
+			s2$`,
+		},
 		{
 			c("abc"), `
 			s0
 				'a'-'c' s1
-			s1$
-		`},
+			s1$`,
+		},
 		{
 			b('a', 'c'),
 			c("abc").Minimize().dump(),
@@ -91,15 +91,15 @@ func TestExpr(t *testing.T) {
 		{
 			s("a").Repeat(), `
 			s0$
-				'a'     s0
-		`},
+				'a'     s0`,
+		},
 		{
 			s("ab").Repeat(), `
 			s0$
 				'a'     s1
 			s1
-				'b'     s0
-		`},
+				'b'     s0`,
+		},
 		{
 			s("ab").AtLeast(1), `
 			s0
@@ -107,24 +107,22 @@ func TestExpr(t *testing.T) {
 			s1
 				'b'     s2
 			s2$
-				'a'     s1
-		`},
+				'a'     s1`,
+		},
 		{
 			con(s(`a`), optional(s(`b`))), `
 			s0
 				'a'     s1
 			s1$
 				'b'     s2
-			s2$
-			`,
+			s2$`,
 		},
 		{
 			con(s(`a`), s(`b`).Repeat()), `
 			s0
 				'a'     s1
 			s1$
-				'b'     s1
-			`,
+				'b'     s1`,
 		},
 		{
 			s(`a`).Repeat(3),
@@ -154,8 +152,8 @@ func TestExpr(t *testing.T) {
 			s5$2
 				'0'-'9' s5
 				'A'-'F' s5
-				'a'-'f' s5
-		`},
+				'a'-'f' s5`,
+		},
 		{
 			b(0, '\U0010ffff'), `
 			s0
@@ -178,8 +176,7 @@ func TestExpr(t *testing.T) {
 			s6
 				80-bf   s4
 			s7
-				80-8f   s4
-			`,
+				80-8f   s4`,
 		},
 		{
 			b(0x3bf, 0x3c0), `
@@ -190,8 +187,7 @@ func TestExpr(t *testing.T) {
 				bf      s3
 			s2
 				80      s3
-			s3$
-			`,
+			s3$`,
 		},
 		{
 			bsas(), `
@@ -200,8 +196,8 @@ func TestExpr(t *testing.T) {
 				'b'     s0
 			s1
 				'a'     s0
-				'b'     s1
-		`},
+				'b'     s1`,
+		},
 		{
 			bsas().Complement(), `
 			s0
@@ -209,8 +205,8 @@ func TestExpr(t *testing.T) {
 				'b'     s0
 			s1$
 				'a'     s0
-				'b'     s1
-		`},
+				'b'     s1`,
+		},
 		{
 			or(bsas(), asbs().Complement()), `
 			s0$
@@ -224,8 +220,7 @@ func TestExpr(t *testing.T) {
 				'b'     s0
 			s3$
 				'a'     s2
-				'b'     s1
-			`,
+				'b'     s1`,
 		},
 		{
 			and(bsas(), asbs().Complement()), `
@@ -240,8 +235,7 @@ func TestExpr(t *testing.T) {
 				'b'     s0
 			s3
 				'a'     s2
-				'b'     s1
-			`,
+				'b'     s1`,
 		},
 		{
 			bsas().Exclude(asbs().Complement()), `
@@ -256,15 +250,13 @@ func TestExpr(t *testing.T) {
 				'b'     s0
 			s3
 				'a'     s2
-				'b'     s1
-			`,
+				'b'     s1`,
 		},
 		{
 			c("ab").Exclude(c("a")), `
 			s0
 				'b'     s1
-			s1$
-			`,
+			s1$`,
 		},
 		{
 			con(b(0xFEFE, 0xFF00).Exclude("\uFEFF").AtLeast(1), "\uFEFF"), `
@@ -285,13 +277,8 @@ func TestExpr(t *testing.T) {
 			s6
 				be      s4
 				bf      s7
-			s7$
-			`,
+			s7$`,
 		},
-		//		{
-		//			con(s(`a`).Repeat(), s(`a`)), `
-		//			`,
-		//		},
 	} {
 		expect(fmt.Sprintf("dump of test case %d", i), testcase.m.Minimize().dump()).Equal(gspec.Unindent(testcase.s))
 	}

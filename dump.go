@@ -33,7 +33,6 @@ func (s *S) dump(ss []S, sid int) string {
 		w.WriteString("\t")
 		w.WriteString(Trans.dump())
 	}
-	w.WriteByte('\n')
 	return w.String()
 }
 
@@ -62,12 +61,11 @@ func quote(b byte) string {
 }
 
 func (m *M) dump() string {
-	var w bytes.Buffer
-	w.WriteByte('\n')
+	ss := make([]string, len(m.States))
 	for i := range m.States {
-		w.WriteString(m.States[i].dump(m.States, i))
+		ss[i] = m.States[i].dump(m.States, i)
 	}
-	return w.String()
+	return strings.Join(ss, "\n")
 }
 
 func (m *M) SaveSVG(file string, opt ...*GraphOption) error {
