@@ -3,7 +3,7 @@ package dfa
 import (
 	"testing"
 
-	"h12.me/gspec"
+	"h12.io/gspec"
 )
 
 func TestMatch(t *testing.T) {

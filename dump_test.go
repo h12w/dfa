@@ -3,7 +3,7 @@ package dfa
 import (
 	"bytes"
 
-	"h12.me/gspec"
+	"h12.io/gspec"
 
 	"testing"
 )
